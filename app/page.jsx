@@ -1102,7 +1102,7 @@ Format output with two sections separated by "WHATSAPP_PITCH":
                 fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 22,
                 color: COLORS.sand, margin: 0, letterSpacing: "-0.01em",
               }}>
-                Tour Costing Simulator
+                Tour Costing Simulator v2
               </h1>
               <p style={{ color: COLORS.muted, fontSize: 12.5, margin: "2px 0 0" }}>
                 Multi-Quote Workspaces & Multi-Day Shopping Cart
