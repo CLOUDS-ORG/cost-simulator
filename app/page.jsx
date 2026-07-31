@@ -1422,6 +1422,7 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
                 Username or Email
               </label>
               <input
+              
                 type="text"
                 required
                 placeholder="e.g. god, admin, agent1, or freelance1"
@@ -1429,6 +1430,8 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
                 onChange={(e) => setAuthForm({ ...authForm, username: e.target.value })}
                 style={{
                   width: "100%",
+                  backgroundColor: COLORS.sand,
+                  color: COLORS.INK,
                   padding: "10px 12px",
                   borderRadius: 10,
                   border: `1px solid ${COLORS.line}`,
@@ -1448,6 +1451,8 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
                 value={authForm.password}
                 onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
                 style={{
+                  backgroundColor: COLORS.sands,
+                  color: COLORS.ink,
                   width: "100%",
                   padding: "10px 12px",
                   borderRadius: 10,
