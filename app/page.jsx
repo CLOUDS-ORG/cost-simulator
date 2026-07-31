@@ -1474,7 +1474,7 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
                   border: `1px solid ${COLORS.coralSoft}`,
                   fontSize: 12,
                   boxSizing: "border-box",
-                  background: "#FFF8F5",
+                  background: "#e6ac92",
                 }}
               />
             </div>
