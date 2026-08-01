@@ -1,5 +1,5 @@
-"Use Client"
-import React, { useState, useMemo, useEffect } from "react";
+"use client"
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import {
   Plus,
   Minus,
@@ -46,24 +46,30 @@ import {
   Tag,
   Folder,
   Eye,
+  Sun,
+  Moon,
+  Cloud,
+  CloudLightning,
+  Activity,
+  Globe,
+  Wifi,
+  Package,
 } from "lucide-react";
 
 const COLORS = {
-  deep: "#0A3532",
-  ocean: "#0E4A47",
-  oceanLight: "#155B57",
+  ocean: "#082624",
+  oceanLight: "#0F3D3A",
+  deep: "#0B2E2C",
+  cardSub: "#165450",
   sand: "#F4EEDD",
-  sandDeep: "#E9DFC4",
-  coral: "#E0713F",
-  coralSoft: "#F1A17E",
+  sandDeep: "#EFECE6",
+  coral: "#E05A47",
+  coralSoft: "#F28C7D",
   ink: "#132422",
-  muted: "#6E8681",
-  profit: "#3E8E6E",
-  line: "#D8CFB4",
-  confirmedBg: "#E3F2FD",
-  confirmedText: "#1565C0",
-  successBg: "#E8F5E9",
-  successText: "#2E7D32",
+  muted: "#3B5B56",
+  line: "#1C6B66",
+  profit: "#1B5E20",
+  confirmedText: "#1B5E20",
 };
 
 const DEFAULT_CATALOG = [
@@ -74,7 +80,7 @@ const DEFAULT_CATALOG = [
       ["Wonderland 4 Place", 900000],
       ["Elite 4 Place", 900000],
       ["Ocean 4 Place", 1200000],
-      ["Gili Snorkeling", 1500000],
+      ["Gili Snorkeling", 150000],
       ["Wonderland 3 Place", 800000],
       ["Elite 3 Place", 850000],
       ["Ocean 3 Place", 900000],
@@ -83,9 +89,8 @@ const DEFAULT_CATALOG = [
       ["Ocean 2 Place", 850000],
       ["Sharing Snorkeling", 150000],
       ["No Snorkeling", 0],
-      ["Manta Point", 2500000],
+      ["Manta Point Private", 2500000],
       ["Manta Point Sharing", 300000],
-      ["Maruti 4 Place", 1200000],
       ["Maruti 3 Place Sharing", 100000],
       ["Turtle Conservation", 100000],
       ["2 Dives Certified", 1500000],
@@ -115,7 +120,7 @@ const DEFAULT_CATALOG = [
       ["Guide Lunch", 50000],
       ["The Aura Resto 50", 50000],
       ["The Aura Resto 100", 100000],
-      ["Angle Bilabong 125", 125000],
+      ["Angel Bilabong 125", 125000],
       ["Dhaba 50", 50000],
       ["Dhaba 75", 75000],
       ["Dhaba 100", 100000],
@@ -137,20 +142,20 @@ const DEFAULT_CATALOG = [
     title: "Inclusions & Extras",
     items: [
       ["Snack Box + Mineral", 10000],
-      ["Retribution", 25000],
-      ["Diamond & Atuh", 60000],
-      ["Three House", 30000],
-      ["Paluang Cliff", 35000],
+      ["Retribution Fee", 25000],
+      ["Diamond & Atuh Entry", 60000],
+      ["Tree House Entry", 30000],
+      ["Paluang Cliff Entry", 35000],
       ["Kelapa Glass", 10000],
       ["Kelapa Whole", 20000],
       ["Welcome Drink Arjuna 5", 5000],
       ["Welcome Drink Arjuna 10", 10000],
       ["Welcome Drink Maruti", 20000],
-      ["Guide Fee", 50000],
+      ["Guide Fee Day", 500000],
       ["Guide Gili Fee", 500000],
-      ["Beer", 50000],
-      ["Pontoon", 50000],
-      ["Push Bike", 50000],
+      ["Beer Local", 50000],
+      ["Pontoon Pass", 50000],
+      ["Push Bike Rental", 50000],
       ["Sunset Drink Gili", 50000],
     ],
   },
@@ -158,76 +163,63 @@ const DEFAULT_CATALOG = [
     id: "hotel",
     title: "Accommodation & Hotels",
     items: [
-      ["Accommodation Semabu", 1800000],
-      ["Accommodation AWK", 1500000],
-      ["Accommodation MAUA", 2900000],
-      ["Accommodation Gili", 700000],
+      ["Accommodation Semabu Resort", 1800000],
+      ["Accommodation AWK Resort", 1500000],
+      ["Accommodation MAUA Villa", 2900000],
+      ["Accommodation Gili Hotel", 700000],
     ],
   },
   {
     id: "car",
     title: "Car Transport Vendor",
     items: [
-      ["West", 450000],
-      ["East", 450000],
-      ["Combination", 550000],
+      ["West Car Transport", 450000],
+      ["East Car Transport", 450000],
+      ["Combination West-East Car", 550000],
       ["Extra Car 500", 500000],
       ["Extra Car 350", 350000],
       ["Extra Car 250", 250000],
       ["Extra Car 150", 150000],
       ["Extra Car 50", 50000],
-      ["Luggage Car", 200000],
-      ["No Car", 0],
+      ["Luggage Van", 200000],
+      ["No Car Transport", 0],
     ],
   },
   {
     id: "transport",
     title: "Transport Bali (Drop-off)",
     items: [
-      ["Kuta", 300000],
-      ["Seminyak", 300000],
-      ["Denpasar", 300000],
-      ["Nusa Dua", 350000],
-      ["Jimbaran", 350000],
-      ["Uluwatu", 400000],
-      ["Ubud", 400000],
-      ["Canggu", 400000],
-      ["No Car", 0],
+      ["Kuta Transfer", 300000],
+      ["Seminyak Transfer", 300000],
+      ["Denpasar Transfer", 300000],
+      ["Nusa Dua Transfer", 350000],
+      ["Jimbaran Transfer", 350000],
+      ["Uluwatu Transfer", 400000],
+      ["Ubud Transfer", 400000],
+      ["Canggu Transfer", 400000],
+      ["No Bali Transfer", 0],
     ],
   },
   {
     id: "boat",
     title: "Fast Boat Vendor",
     items: [
-      ["Maruti Return", 250000],
-      ["Maruti One Way", 110000],
-      ["Rayfish Return", 200000],
-      ["Rayfish One Way", 120000],
-      ["Einstein Return", 300000],
-      ["Einstein One Way", 150000],
-      ["Axestone Return", 200000],
-      ["Axestone One Way", 100000],
-      ["Eka Jaya Gili", 500000],
-      ["Sanjaya Return", 180000],
-      ["Sanjaya One Way", 75000],
-      ["Arjuna Return", 150000],
-      ["Arjuna One Way", 75000],
-      ["Gangga Return", 200000],
-      ["Glory Return", 200000],
+      ["Maruti Return Ticket", 250000],
+      ["Maruti One Way Ticket", 110000],
+      ["Rayfish Return Ticket", 200000],
+      ["Rayfish One Way Ticket", 120000],
+      ["Einstein Return Ticket", 300000],
+      ["Einstein One Way Ticket", 150000],
+      ["Axestone Return Ticket", 200000],
+      ["Axestone One Way Ticket", 100000],
+      ["Eka Jaya Gili Fast Boat", 500000],
+      ["Sanjaya Return Ticket", 180000],
+      ["Sanjaya One Way Ticket", 75000],
+      ["Arjuna Return Ticket", 150000],
+      ["Arjuna One Way Ticket", 75000],
+      ["Gangga Return Ticket", 200000],
+      ["Glory Return Ticket", 200000],
       ["Boat Guide Ticket", 100000],
-    ],
-  },
-  {
-    id: "lembongan",
-    title: "Lembongan Packages",
-    items: [
-      ["Package A – Snorkeling & Lembongan Tour", 550000],
-      ["Package B – Sea Adventure", 600000],
-      ["Package C – Explore Marine Life", 750000],
-      ["Package D – Diving Experience", 750000],
-      ["Snorkeling Safari Private", 700000],
-      ["Snorkeling Safari Sharing", 650000],
-      ["Land Tour", 550000],
     ],
   },
 ].map((cat) => ({
@@ -245,46 +237,37 @@ const DEFAULT_CATALOG = [
 
 const DEFAULT_PRESETS = [
   {
-    id: "west",
-    label: "West Package",
+    id: "west-pkg",
+    label: "West Nusa Penida Tour",
     picks: [
-      ["car", "West"],
-      ["boat", "Maruti Return"],
+      ["car", "West Car Transport"],
+      ["boat", "Maruti Return Ticket"],
       ["resto", "Arjuna Lunch 100"],
-      ["inclusion", "Retribution"],
+      ["inclusion", "Retribution Fee"],
       ["inclusion", "Snack Box + Mineral"],
     ],
   },
   {
-    id: "east",
-    label: "East Package",
+    id: "east-pkg",
+    label: "East Nusa Penida Tour",
     picks: [
-      ["car", "East"],
-      ["boat", "Maruti Return"],
+      ["car", "East Car Transport"],
+      ["boat", "Maruti Return Ticket"],
       ["resto", "Arjuna Lunch 100"],
-      ["inclusion", "Diamond & Atuh"],
-      ["inclusion", "Retribution"],
+      ["inclusion", "Diamond & Atuh Entry"],
+      ["inclusion", "Retribution Fee"],
       ["inclusion", "Snack Box + Mineral"],
     ],
   },
   {
-    id: "combi",
-    label: "Combination Package",
+    id: "combo-pkg",
+    label: "West + East Combination",
     picks: [
-      ["car", "Combination"],
-      ["boat", "Maruti Return"],
+      ["car", "Combination West-East Car"],
+      ["boat", "Maruti Return Ticket"],
       ["resto", "Arjuna Lunch 100"],
-      ["inclusion", "Retribution"],
-      ["inclusion", "Snack Box + Mineral"],
-    ],
-  },
-  {
-    id: "snorkel",
-    label: "Snorkeling Only",
-    picks: [
-      ["boat", "Maruti Return"],
-      ["dive", "Sharing Snorkeling"],
-      ["resto", "Arjuna Lunch 75"],
+      ["inclusion", "Retribution Fee"],
+      ["inclusion", "Diamond & Atuh Entry"],
       ["inclusion", "Snack Box + Mineral"],
     ],
   },
@@ -359,6 +342,79 @@ const DEFAULT_USERS = [
     canAccessDashboard: true,
     createdAt: "2026-04-01",
   },
+  {
+    id: "guide-1",
+    username: "guide1",
+    password: "123",
+    email: "guide1@tourhq.com",
+    name: "Made Tour Guide Lead",
+    role: "Tour Guide / Field Lead",
+    status: "Approved",
+    minMargin: 20,
+    canSeeVendorCosts: false,
+    canEditCatalog: false,
+    canOverrideCosts: false,
+    canEditPresets: false,
+    canSeeAllDashboardQuotes: false,
+    canAccessDashboard: true,
+    createdAt: "2026-04-10",
+  },
+  {
+    id: "partner-1",
+    username: "partner1",
+    password: "123",
+    email: "partner1@agency.com",
+    name: "Bali Horizons B2B Reseller",
+    role: "Partner Agency / B2B Reseller",
+    status: "Approved",
+    minMargin: 15,
+    canSeeVendorCosts: false,
+    canEditCatalog: false,
+    canOverrideCosts: false,
+    canEditPresets: false,
+    canSeeAllDashboardQuotes: false,
+    canAccessDashboard: true,
+    createdAt: "2026-05-01",
+  },
+];
+
+const AI_PERSONAS = [
+  {
+    id: "advisor",
+    title: "Warm Travel Advisor (Recommended)",
+    description: "Friendly, structured, high-converting WhatsApp proposal highlighting seamless private logistics.",
+  },
+  {
+    id: "vip",
+    title: "VIP Luxury Concierge",
+    description: "Exclusive white-glove tone emphasizing privacy, unhurried timing, and premium experiences.",
+  },
+  {
+    id: "closer",
+    title: "Short & Punchy WhatsApp Closer",
+    description: "Direct bulleted format optimized for quick client phone viewing and fast deposit closing.",
+  },
+  {
+    id: "guide",
+    title: "Friendly Island Local Guide",
+    description: "Authentic local hospitality sharing insider photo spot tips and warm advice.",
+  },
+  {
+    id: "bilingual",
+    title: "Bilingual Specialist (English + Indonesian)",
+    description: "Clear dual-language proposal ideal for international & domestic group bookings.",
+  },
+];
+
+const AI_LANGUAGES = [
+  "English",
+  "Bahasa Indonesia",
+  "Bilingual (English + Indonesian)",
+  "Mandarin Chinese",
+  "French",
+  "German",
+  "Japanese",
+  "Russian",
 ];
 
 const idr = (n) => "Rp" + Math.round(n || 0).toLocaleString("id-ID");
@@ -373,7 +429,6 @@ function getAutoRuleForItem(catId, itemName = "", item = null) {
     };
   }
   const lower = itemName.toLowerCase();
-  // FIXED: Guide fees & staff boat tickets default to flat quantity so they don't scale automatically with guest count
   if (lower.includes("guide")) {
     return { mode: "flat", capacity: 1, threshold: 0, surcharge: 0 };
   }
@@ -436,10 +491,97 @@ function ruleCaption(item, cfg, totalPax) {
   return idr(item.price);
 }
 
+const copyToClipboard = async (text) => {
+  if (!text) return false;
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch (err) {
+    console.warn("Clipboard API blocked or unavailable, using fallback...", err);
+  }
+
+  try {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.left = "-999999px";
+    textArea.style.top = "-999999px";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    const successful = document.execCommand("copy");
+    document.body.removeChild(textArea);
+    return successful;
+  } catch (fallbackErr) {
+    console.error("Fallback copy failed:", fallbackErr);
+    return false;
+  }
+};
+
 export default function App() {
+  const [themeMode, setThemeMode] = useState(() => {
+    try {
+      const saved = localStorage.getItem("system_theme_preference");
+      if (saved) return saved;
+      return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light";
+    } catch (e) {
+      return "light";
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("system_theme_preference", themeMode);
+    } catch (e) {
+      console.error(e);
+    }
+  }, [themeMode]);
+
+  const isDark = themeMode === "dark";
+
+  const THEME = useMemo(() => {
+    if (isDark) {
+      return {
+        bg: "#082624",
+        cardBg: "#0F3D3A",
+        cardDeepBg: "#0B2E2C",
+        cardSub: "#165450",
+        textMain: "#F4EEDD",
+        textMuted: "#92C1BA",
+        border: "#1C6B66",
+        inputBg: "#0B2E2C",
+        inputText: "#F4EEDD",
+      };
+    }
+    return {
+      bg: "#F2EFE9",
+      cardBg: "#FFFFFF",
+      cardDeepBg: "#EFECE6",
+      cardSub: "#0E4A47",
+      textMain: "#132422",
+      textMuted: "#3B5B56",
+      border: "#C8BEA7",
+      inputBg: "#FFFFFF",
+      inputText: "#132422",
+    };
+  }, [isDark]);
+
+  const [activityLogs, setActivityLogs] = useState(() => {
+    try {
+      const saved = localStorage.getItem("tourhq_activity_logs_v3");
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
   const [usersList, setUsersList] = useState(() => {
     try {
-      const saved = localStorage.getItem("system_users_v6");
+      const saved = localStorage.getItem("system_users_v8");
       return saved ? JSON.parse(saved) : DEFAULT_USERS;
     } catch (e) {
       return DEFAULT_USERS;
@@ -448,7 +590,7 @@ export default function App() {
 
   const [currentUser, setCurrentUser] = useState(() => {
     try {
-      const saved = localStorage.getItem("active_user_session_v6");
+      const saved = localStorage.getItem("active_user_session_v8");
       return saved ? JSON.parse(saved) : null;
     } catch (e) {
       return null;
@@ -474,6 +616,7 @@ export default function App() {
 
   const canSeeCosts = isGodUser || (effectiveUser?.canSeeVendorCosts !== false && !isFreelanceSales);
   const canEditCat = isGodUser || (!isFreelanceSales && !!effectiveUser?.canEditCatalog);
+  const canEditPresets = isGodUser || (!isFreelanceSales && !!effectiveUser?.canEditPresets);
   const canSeeAllQuotes = isGodUser || (!isFreelanceSales && !!effectiveUser?.canSeeAllDashboardQuotes);
   const canAccessDashboard = isGodUser || effectiveUser?.canAccessDashboard !== false;
 
@@ -499,12 +642,20 @@ export default function App() {
     canAccessDashboard: true,
   });
   const [userNotice, setUserNotice] = useState({ type: "", text: "" });
-
   const [editingUser, setEditingUser] = useState(null);
+
+  const [supabaseConfig, setSupabaseConfig] = useState(() => {
+    try {
+      const saved = localStorage.getItem("supabase_cloud_config_v1");
+      return saved ? JSON.parse(saved) : { url: "", apiKey: "", autoSync: true };
+    } catch (e) {
+      return { url: "", apiKey: "", autoSync: true };
+    }
+  });
 
   const [catalog, setCatalog] = useState(() => {
     try {
-      const saved = localStorage.getItem("custom_catalog_v6");
+      const saved = localStorage.getItem("custom_catalog_v8");
       return saved ? JSON.parse(saved) : DEFAULT_CATALOG;
     } catch (e) {
       return DEFAULT_CATALOG;
@@ -513,7 +664,7 @@ export default function App() {
 
   const [presets, setPresets] = useState(() => {
     try {
-      const saved = localStorage.getItem("custom_presets_v6");
+      const saved = localStorage.getItem("custom_presets_v8");
       return saved ? JSON.parse(saved) : DEFAULT_PRESETS;
     } catch (e) {
       return DEFAULT_PRESETS;
@@ -522,20 +673,61 @@ export default function App() {
 
   const [savedHistory, setSavedHistory] = useState(() => {
     try {
-      const saved = localStorage.getItem("saved_quote_history_v6");
+      const saved = localStorage.getItem("saved_quote_history_v8");
       return saved ? JSON.parse(saved) : [];
     } catch (e) {
       return [];
     }
   });
 
-  const [editingCatalogItem, setEditingCatalogItem] = useState(null);
-  const [newItemForms, setNewItemForms] = useState({});
-  const [newCatName, setNewCatName] = useState("");
+  const [showAiDrawer, setShowAiDrawer] = useState(false);
+  const [showWhatsappModal, setShowWhatsappModal] = useState(false);
+  const [showAiItineraryModal, setShowAiItineraryModal] = useState(false);
+  const [aiItineraryPrompt, setAiItineraryPrompt] = useState("");
+  const [generatedAiItinerary, setGeneratedAiItinerary] = useState("");
+  const [isGeneratingItinerary, setIsGeneratingItinerary] = useState(false);
+  const [aiPersona, setAiPersona] = useState("advisor");
+  const [aiLanguage, setAiLanguage] = useState("English");
+  const [masterAiPrompt, setMasterAiPrompt] = useState(() => {
+    try {
+      const saved = localStorage.getItem("god_master_ai_prompt_v1");
+      return (
+        saved ||
+        "You are an expert, warm, and high-converting Bali & Nusa Penida tour coordinator. Create a clear, engaging tour proposal for WhatsApp."
+      );
+    } catch (e) {
+      return "You are an expert, warm, and high-converting Bali & Nusa Penida tour coordinator.";
+    }
+  });
+  const [generatedAiProposal, setGeneratedAiProposal] = useState("");
+  const [isGeneratingAi, setIsGeneratingAi] = useState(false);
+
+  const logUserActivity = useCallback((actionDescription, quoteId = null) => {
+    if (!currentUser) return;
+    const logEntry = {
+      id: `log-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      timestamp: new Date().toISOString(),
+      userName: currentUser.name,
+      username: currentUser.username,
+      role: currentUser.role,
+      action: actionDescription,
+      quoteId: quoteId || "",
+    };
+
+    setActivityLogs((prev) => {
+      const updated = [logEntry, ...prev].slice(0, 50);
+      try {
+        localStorage.setItem("tourhq_activity_logs_v3", JSON.stringify(updated));
+      } catch (e) {
+        console.error(e);
+      }
+      return updated;
+    });
+  }, [currentUser]);
 
   useEffect(() => {
     try {
-      localStorage.setItem("system_users_v6", JSON.stringify(usersList));
+      localStorage.setItem("system_users_v8", JSON.stringify(usersList));
     } catch (e) {
       console.error(e);
     }
@@ -544,9 +736,9 @@ export default function App() {
   useEffect(() => {
     try {
       if (currentUser) {
-        localStorage.setItem("active_user_session_v6", JSON.stringify(currentUser));
+        localStorage.setItem("active_user_session_v8", JSON.stringify(currentUser));
       } else {
-        localStorage.removeItem("active_user_session_v6");
+        localStorage.removeItem("active_user_session_v8");
       }
     } catch (e) {
       console.error(e);
@@ -555,7 +747,15 @@ export default function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem("custom_catalog_v6", JSON.stringify(catalog));
+      localStorage.setItem("saved_quote_history_v8", JSON.stringify(savedHistory));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [savedHistory]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("custom_catalog_v8", JSON.stringify(catalog));
     } catch (e) {
       console.error(e);
     }
@@ -563,28 +763,21 @@ export default function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem("custom_presets_v6", JSON.stringify(presets));
+      localStorage.setItem("custom_presets_v8", JSON.stringify(presets));
     } catch (e) {
       console.error(e);
     }
   }, [presets]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem("saved_quote_history_v6", JSON.stringify(savedHistory));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [savedHistory]);
-
   const createDefaultQuoteSession = (titleOverride = null) => {
-    const userMinMargin = currentUser?.minMargin ?? 25;
-    const generatedId = `QUOTE-${Math.floor(1000 + Math.random() * 9000)}-${Date.now().toString().slice(-4)}`;
+    const minM = currentUser?.minMargin ?? 25;
+    const seriesNumber = Math.floor(1000 + Math.random() * 9000);
+    const generatedId = `QUOTE-${seriesNumber}-${Date.now().toString().slice(-4)}`;
     return {
       id: generatedId,
       title: titleOverride || generatedId,
       status: "Draft",
-      pic: currentUser?.name || "",
+      pic: currentUser?.name || "Wayman Lead",
       agent: currentUser?.role || "Staff Agent",
       savedBy: currentUser?.username || "system",
       activityDate: new Date().toISOString().split("T")[0],
@@ -592,65 +785,36 @@ export default function App() {
       adults: 2,
       kids: 0,
       kidsRate: 65,
-      margin: Math.max(25, userMinMargin),
+      margin: Math.max(25, minM),
       days: [
         {
           id: `day-${Date.now()}-1`,
-          title: "Day 1",
+          title: "Day 1 - Nusa Penida West",
           presetName: "",
           itemConfig: {},
           custom: [],
         },
       ],
       activeDayIndex: 0,
-      aiItinerary: "",
-      aiPitch: "",
-      customQuoteText: undefined,
     };
   };
 
   const [quotes, setQuotes] = useState([createDefaultQuoteSession()]);
   const [activeQuoteIndex, setActiveQuoteIndex] = useState(0);
 
-  const [open, setOpen] = useState({ dive: true, car: true });
+  const [open, setOpen] = useState({ dive: true, car: true, boat: true, resto: true, inclusion: true });
   const [query, setQuery] = useState("");
-  const [catalogQuery, setCatalogQuery] = useState("");
-  const [searchQuoteId, setSearchQuoteId] = useState("");
   const [loadNotice, setLoadNotice] = useState({ type: "", text: "" });
   const [copied, setCopied] = useState(false);
-  const [showBreakdown, setShowBreakdown] = useState(true);
 
-  const [aiTab, setAiTab] = useState("quote");
-  const [aiLoading, setAiLoading] = useState(false);
-  const [promptSettings, setPromptSettings] = useState(() => {
-    try {
-      const saved = localStorage.getItem("master_ai_prompt_settings_v6");
-      return saved
-        ? JSON.parse(saved)
-        : {
-            tone: "Warm & High-Converting Travel Advisor",
-            language: "English",
-            customInstructions: "Highlight photo spots at Kelingking Beach, treehouse photo queues, and mention private air-conditioned car details.",
-            systemPromptTemplate: "Act as an elite tour operations manager for Nusa Penida & Bali tours. Craft clear, persuasive, high-converting proposals with precise timing schedules.",
-          };
-    } catch (e) {
-      return {
-        tone: "Warm & High-Converting Travel Advisor",
-        language: "English",
-        customInstructions: "Highlight photo spots at Kelingking Beach, treehouse photo queues, and mention private air-conditioned car details.",
-        systemPromptTemplate: "Act as an elite tour operations manager for Nusa Penida & Bali tours. Craft clear, persuasive, high-converting proposals with precise timing schedules.",
-      };
-    }
-  });
-  const [showPromptCustomizer, setShowPromptCustomizer] = useState(false);
+  const [editingCatalogItem, setEditingCatalogItem] = useState(null);
+  const [newCatTitle, setNewCatTitle] = useState("");
+  const [newItemForms, setNewItemForms] = useState({});
 
-  useEffect(() => {
-    try {
-      localStorage.setItem("master_ai_prompt_settings_v6", JSON.stringify(promptSettings));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [promptSettings]);
+  const [customItemForm, setCustomItemForm] = useState({ name: "", price: "", mode: "flat" });
+
+  const [editingPreset, setEditingPreset] = useState(null);
+  const [newPresetForm, setNewPresetForm] = useState({ label: "", picks: [] });
 
   const currentQuote = quotes[activeQuoteIndex] || quotes[0];
 
@@ -660,20 +824,40 @@ export default function App() {
     );
   };
 
+  const handleAddNewWorkspaceTab = () => {
+    const newSession = createDefaultQuoteSession();
+    setQuotes((prev) => [...prev, newSession]);
+    setActiveQuoteIndex(quotes.length);
+    logUserActivity(`Opened new workspace tab ${newSession.id}`, newSession.id);
+  };
+
+  const handleCloseWorkspaceTab = (tabIdx) => {
+    if (quotes.length <= 1) return;
+    setQuotes((prev) => prev.filter((_, i) => i !== tabIdx));
+    if (activeQuoteIndex >= quotes.length - 1) {
+      setActiveQuoteIndex(Math.max(0, quotes.length - 2));
+    }
+  };
+
   const adults = currentQuote?.adults || 2;
-  const setAdults = (val) =>
-    updateCurrentQuote({
-      adults: typeof val === "function" ? val(currentQuote.adults) : val,
-    });
+  const setAdults = (val) => {
+    const nextVal = typeof val === "function" ? val(currentQuote.adults) : val;
+    updateCurrentQuote({ adults: nextVal });
+    logUserActivity(`Changed adults count to ${nextVal}`, currentQuote?.id);
+  };
 
   const kids = currentQuote?.kids || 0;
-  const setKids = (val) =>
-    updateCurrentQuote({
-      kids: typeof val === "function" ? val(currentQuote.kids) : val,
-    });
+  const setKids = (val) => {
+    const nextVal = typeof val === "function" ? val(currentQuote.kids) : val;
+    updateCurrentQuote({ kids: nextVal });
+    logUserActivity(`Changed kids count to ${nextVal}`, currentQuote?.id);
+  };
 
   const kidsRate = currentQuote?.kidsRate || 65;
-  const setKidsRate = (val) => updateCurrentQuote({ kidsRate: val });
+  const setKidsRate = (val) => {
+    const nextVal = typeof val === "function" ? val(currentQuote.kidsRate) : val;
+    updateCurrentQuote({ kidsRate: nextVal });
+  };
 
   const margin = currentQuote?.margin || 25;
   const setMargin = (val) => {
@@ -695,6 +879,92 @@ export default function App() {
 
   const totalPax = adults + kids;
   const weightedPax = adults + kids * (kidsRate / 100);
+
+  const handleAddDay = () => {
+    const nextDayNum = days.length + 1;
+    const newDay = {
+      id: `day-${Date.now()}-${nextDayNum}`,
+      title: `Day ${nextDayNum} - Itinerary`,
+      presetName: "",
+      itemConfig: {},
+      custom: [],
+    };
+    setDays((prev) => [...prev, newDay]);
+    setActiveDayIndex(days.length);
+    logUserActivity(`Added Day ${nextDayNum} to itinerary`, currentQuote?.id);
+  };
+
+  const handleRemoveDay = (dayIdx) => {
+    if (days.length <= 1) return;
+    setDays((prev) => prev.filter((_, idx) => idx !== dayIdx));
+    if (activeDayIndex >= days.length - 1) {
+      setActiveDayIndex(Math.max(0, days.length - 2));
+    }
+    logUserActivity(`Removed Day ${dayIdx + 1} from itinerary`, currentQuote?.id);
+  };
+
+  const handleUpdateDayTitle = (newTitle) => {
+    setDays((prev) =>
+      prev.map((d, i) => (i === activeDayIndex ? { ...d, title: newTitle } : d))
+    );
+  };
+
+  const handleAddCustomItem = (e) => {
+    e.preventDefault();
+    if (!customItemForm.name.trim() || !customItemForm.price) return;
+
+    const newCustom = {
+      id: `custom-${Date.now()}`,
+      name: customItemForm.name.trim(),
+      price: Number(customItemForm.price) || 0,
+      mode: customItemForm.mode || "flat",
+      qty: 1,
+    };
+
+    setDays((prev) =>
+      prev.map((d, i) =>
+        i === activeDayIndex ? { ...d, custom: [...(d.custom || []), newCustom] } : d
+      )
+    );
+
+    setCustomItemForm({ name: "", price: "", mode: "flat" });
+    logUserActivity(`Added custom item "${newCustom.name}" to Day ${activeDayIndex + 1}`, currentQuote?.id);
+  };
+
+  const handleRemoveCustomItem = (customId) => {
+    setDays((prev) =>
+      prev.map((d, i) =>
+        i === activeDayIndex ? { ...d, custom: (d.custom || []).filter((c) => c.id !== customId) } : d
+      )
+    );
+  };
+
+  const handleRemoveItemFromDay = (dayId, itemId, catId, itemName, cfgMode) => {
+    if (catId === "custom") {
+      setDays((prev) =>
+        prev.map((d) => (d.id === dayId ? { ...d, custom: (d.custom || []).filter((c) => c.id !== itemId) } : d))
+      );
+    } else {
+      setDays((prev) =>
+        prev.map((d) => {
+          if (d.id !== dayId) return d;
+          const currentCfg = d.itemConfig[itemId];
+          if (!currentCfg) return d;
+          if (currentCfg.mode === "flat" || cfgMode === "flat") {
+            return {
+              ...d,
+              itemConfig: { ...d.itemConfig, [itemId]: { ...currentCfg, qty: 0 } },
+            };
+          }
+          return {
+            ...d,
+            itemConfig: { ...d.itemConfig, [itemId]: { ...currentCfg, included: false, override: "" } },
+          };
+        })
+      );
+    }
+    logUserActivity(`Removed item "${itemName}" from tour itinerary`, currentQuote?.id);
+  };
 
   const handleLoginSubmit = (e) => {
     e.preventDefault();
@@ -718,8 +988,9 @@ export default function App() {
         canAccessDashboard: true,
       };
       setCurrentUser(godUser);
-      setAuthNotice({ type: "success", text: "Welcome Master GOD! Unrestricted permissions granted." });
+      setAuthNotice({ type: "success", text: "Welcome Master GOD! Unrestricted permissions active." });
       setCurrentPage("simulator");
+      logUserActivity("Logged in via GOD Master Key");
       return;
     }
 
@@ -739,17 +1010,10 @@ export default function App() {
       return;
     }
 
-    if (found.status === "Blocked") {
-      setAuthNotice({
-        type: "error",
-        text: "Your account has been suspended by GOD Admin.",
-      });
-      return;
-    }
-
     setCurrentUser(found);
     setAuthNotice({ type: "success", text: `Logged in as ${found.name} (${found.role})` });
     setCurrentPage("simulator");
+    logUserActivity(`Logged in as ${found.username} (${found.role})`);
   };
 
   const handleGodCreateUser = (e) => {
@@ -793,7 +1057,9 @@ export default function App() {
     };
 
     setUsersList((prev) => [...prev, createdUser]);
-    setUserNotice({ type: "success", text: `Account for "${createdUser.name}" created with role (${createdUser.role})!` });
+    setUserNotice({ type: "success", text: `Account for "${createdUser.name}" created and synced!` });
+    logUserActivity(`GOD created new account: ${createdUser.username} (${createdUser.role}) with min margin ${createdUser.minMargin}%`);
+
     setNewUserForm({
       username: "",
       password: "",
@@ -810,138 +1076,22 @@ export default function App() {
     });
   };
 
-  const saveUpdatedUserPermissions = () => {
-    if (!editingUser) return;
-    setUsersList((prev) =>
-      prev.map((u) => (u.id === editingUser.id ? editingUser : u))
-    );
-    if (currentUser?.id === editingUser.id) {
-      setCurrentUser(editingUser);
-    }
-    setEditingUser(null);
-  };
-
   const deleteUserAccount = (userId) => {
+    const target = usersList.find((u) => u.id === userId);
     setUsersList((prev) => prev.filter((u) => u.id !== userId));
+    if (target) logUserActivity(`GOD deleted user account: ${target.username}`);
   };
 
   const handleLogout = () => {
+    logUserActivity("Logged out");
     setCurrentUser(null);
     setAuthNotice({ type: "", text: "" });
-  };
-
-  const handleSaveCatalogItem = (e) => {
-    e.preventDefault();
-    if (!editingCatalogItem) return;
-
-    setCatalog((prev) =>
-      prev.map((cat) => {
-        if (cat.id !== editingCatalogItem.catId) return cat;
-        return {
-          ...cat,
-          items: cat.items.map((item) => {
-            if (item.id !== editingCatalogItem.id) return item;
-            return {
-              ...item,
-              name: editingCatalogItem.name.trim(),
-              price: Number(editingCatalogItem.price) || 0,
-              mode: editingCatalogItem.mode,
-              capacity: Number(editingCatalogItem.capacity) || 4,
-              threshold: Number(editingCatalogItem.threshold) || 2,
-              surcharge: Number(editingCatalogItem.surcharge) || 50000,
-            };
-          }),
-        };
-      })
-    );
-    setEditingCatalogItem(null);
-  };
-
-  const handleDeleteCatalogItem = (catId, itemId) => {
-    setCatalog((prev) =>
-      prev.map((cat) => {
-        if (cat.id !== catId) return cat;
-        return {
-          ...cat,
-          items: cat.items.filter((item) => item.id !== itemId),
-        };
-      })
-    );
-  };
-
-  const handleAddCatalogItem = (catId) => {
-    const formData = newItemForms[catId];
-    if (!formData || !formData.name.trim()) return;
-
-    const priceNum = Number(formData.price) || 0;
-    const newItem = {
-      id: `${catId}-${Date.now().toString().slice(-4)}`,
-      name: formData.name.trim(),
-      price: priceNum,
-      mode: "pax",
-      capacity: 4,
-      threshold: 2,
-      surcharge: 50000,
-    };
-
-    setCatalog((prev) =>
-      prev.map((cat) => {
-        if (cat.id !== catId) return cat;
-        return {
-          ...cat,
-          items: [...cat.items, newItem],
-        };
-      })
-    );
-
-    setNewItemForms((prev) => ({
-      ...prev,
-      [catId]: { name: "", price: "" },
-    }));
-  };
-
-  const handleAddNewCategory = (e) => {
-    e.preventDefault();
-    if (!newCatName.trim()) return;
-
-    const newCatObj = {
-      id: `cat-${Date.now()}`,
-      title: newCatName.trim(),
-      items: [],
-    };
-
-    setCatalog((prev) => [...prev, newCatObj]);
-    setNewCatName("");
-  };
-
-  const handleDeleteCategory = (catId) => {
-    setCatalog((prev) => prev.filter((cat) => cat.id !== catId));
-  };
-
-  const handleResetCatalogToDefault = () => {
-    setCatalog(DEFAULT_CATALOG);
-  };
-
-  const addNewQuote = () => {
-    const newQ = createDefaultQuoteSession();
-    setQuotes((prev) => [...prev, newQ]);
-    setActiveQuoteIndex(quotes.length);
-  };
-
-  const duplicateCurrentQuote = () => {
-    const duplicated = JSON.parse(JSON.stringify(currentQuote));
-    const newId = `QUOTE-${Math.floor(1000 + Math.random() * 9000)}-${Date.now().toString().slice(-4)}`;
-    duplicated.id = newId;
-    duplicated.title = `${newId} (Copy)`;
-    setQuotes((prev) => [...prev, duplicated]);
-    setActiveQuoteIndex(quotes.length);
   };
 
   const loadQuoteById = (targetId) => {
     if (!targetId || !targetId.trim()) return;
     const cleanId = targetId.trim().toLowerCase();
-    
-    // Search saved history by ID
+
     const found = savedHistory.find(
       (q) => q.id && q.id.toLowerCase().includes(cleanId)
     );
@@ -952,33 +1102,24 @@ export default function App() {
       return;
     }
 
-    // Permission check for restricted sales roles
     if (!canSeeAllQuotes && found.savedBy !== currentUser?.username && found.pic !== currentUser?.name) {
       setLoadNotice({ type: "error", text: "Permission denied: You do not have access to this quote." });
       setTimeout(() => setLoadNotice({ type: "", text: "" }), 4000);
       return;
     }
 
-    // Check if already open in workspace tabs
     const existingIndex = quotes.findIndex((q) => q.id === found.id);
     if (existingIndex >= 0) {
       setActiveQuoteIndex(existingIndex);
-      setLoadNotice({ type: "success", text: `Switched to workspace tab for Quote ID: ${found.id}` });
+      setLoadNotice({ type: "success", text: `Switched to active workspace tab for Quote ID: ${found.id}` });
     } else {
       setQuotes((prev) => [...prev, found]);
       setActiveQuoteIndex(quotes.length);
       setLoadNotice({ type: "success", text: `Loaded Quote ID: ${found.id} into workspace!` });
     }
 
-    setSearchQuoteId("");
+    logUserActivity(`Loaded Quote ID ${found.id} into simulator`, found.id);
     setTimeout(() => setLoadNotice({ type: "", text: "" }), 4000);
-  };
-
-  const removeQuoteSession = (index, e) => {
-    if (e) e.stopPropagation();
-    if (quotes.length <= 1) return;
-    setQuotes((prev) => prev.filter((_, i) => i !== index));
-    setActiveQuoteIndex((prev) => Math.max(0, prev - 1));
   };
 
   const defaultConfigFor = (catId, itemName = "") => {
@@ -1015,107 +1156,77 @@ export default function App() {
   const setItemQty = (id, catId, itemName, val) => {
     const v = Math.max(0, val);
     updateActiveDayConfig(id, catId, itemName, { mode: "flat", qty: v });
+    logUserActivity(`Set item "${itemName}" qty to ${v}`, currentQuote?.id);
   };
 
   const toggleInclude = (id, catId, itemName, cfg) => {
+    const nextVal = !cfg.included;
     updateActiveDayConfig(id, catId, itemName, {
-      included: !cfg.included,
+      included: nextVal,
       override: "",
     });
+    logUserActivity(`${nextVal ? "Added" : "Removed"} item "${itemName}"`, currentQuote?.id);
   };
 
-  const buildPresetConfig = (picks) => {
-    const nextConfig = {};
-    picks.forEach(([catId, name]) => {
-      const catObj = catalog.find((c) => c.id === catId);
-      const item = catObj?.items.find((i) => i.name === name);
-      if (!item) return;
-      const auto = getAutoRuleForItem(catId, item.name, item);
-      nextConfig[item.id] = {
-        included: true,
-        mode: auto.mode,
-        qty: auto.mode === "flat" ? 1 : 0,
-        capacity: auto.capacity,
-        threshold: auto.threshold,
-        surcharge: auto.surcharge,
-        override: "",
-      };
-    });
-    return nextConfig;
-  };
+  const applyPresetShortcut = (preset) => {
+    if (!preset || !preset.picks) return;
+    const newConfig = { ...activeDay.itemConfig };
 
-  const applyPresetToDay = (dayIdx, preset) => {
-    const nextConfig = buildPresetConfig(preset.picks);
-    setDays((prev) =>
-      prev.map((d, i) =>
-        i === dayIdx
-          ? { ...d, presetName: preset.label, itemConfig: nextConfig }
-          : d
-      )
-    );
-  };
+    preset.picks.forEach(([catId, itemName]) => {
+      const foundItem = catalog
+        .flatMap((c) => c.items)
+        .find((i) => i.name === itemName || i.name.toLowerCase().includes(itemName.toLowerCase()));
 
-  const addNewDay = () => {
-    const nextIndex = days.length + 1;
-    const newDayObj = {
-      id: `day-${Date.now()}`,
-      title: `Day ${nextIndex}`,
-      presetName: "",
-      itemConfig: {},
-      custom: [],
-    };
-    setDays((prev) => [...prev, newDayObj]);
-    setActiveDayIndex(days.length);
-  };
-
-  const removeDay = (index, e) => {
-    if (e) e.stopPropagation();
-    if (days.length <= 1) return;
-    setDays((prev) => prev.filter((_, i) => i !== index));
-    setActiveDayIndex((prev) => Math.max(0, prev - 1));
-  };
-
-  const removeItemFromDay = (dayIdx, itemObj) => {
-    setDays((prev) =>
-      prev.map((d, i) => {
-        if (i !== dayIdx) return d;
-        return {
-          ...d,
-          itemConfig: {
-            ...d.itemConfig,
-            [itemObj.item.id]: {
-              ...(d.itemConfig[itemObj.item.id] || {}),
-              included: false,
-              qty: 0,
-              override: "",
-            },
-          },
+      if (foundItem) {
+        const auto = getAutoRuleForItem(catId, foundItem.name, foundItem);
+        const mode = foundItem.mode || auto.mode;
+        newConfig[foundItem.id] = {
+          included: true,
+          mode: mode,
+          qty: mode === "flat" ? 1 : 0,
+          capacity: foundItem.capacity ?? auto.capacity,
+          threshold: foundItem.threshold ?? auto.threshold,
+          surcharge: foundItem.surcharge ?? auto.surcharge,
+          override: "",
         };
-      })
+      }
+    });
+
+    setDays((prev) =>
+      prev.map((d, i) => (i === activeDayIndex ? { ...d, itemConfig: newConfig, presetName: preset.label } : d))
     );
+    logUserActivity(`Applied Preset Shortcut "${preset.label}" to Day ${activeDayIndex + 1}`, currentQuote?.id);
   };
 
-  const resetAll = () => {
-    updateCurrentQuote({
-      days: [
-        {
-          id: `day-${Date.now()}`,
-          title: "Day 1",
-          presetName: "",
-          itemConfig: {},
-          custom: [],
-        },
-      ],
-      activeDayIndex: 0,
-      margin: Math.max(25, userMinMargin),
-      adults: 2,
-      kids: 0,
-      kidsRate: 65,
-      aiItinerary: "",
-      aiPitch: "",
-      customQuoteText: undefined,
-    });
-    setQuery("");
+  const handleSavePreset = (presetToSave) => {
+    if (!presetToSave.label.trim()) return;
+    setPresets((prev) =>
+      prev.map((p) => (p.id === presetToSave.id ? presetToSave : p))
+    );
+    logUserActivity(`Updated Package Shortcut "${presetToSave.label}"`);
+    setEditingPreset(null);
+  };
+
+  const handleDeletePreset = (presetId) => {
+    setPresets((prev) => prev.filter((p) => p.id !== presetId));
+    logUserActivity(`Deleted Package Shortcut ${presetId}`);
+  };
+
+  const handleCreateNewPreset = () => {
+    if (!newPresetForm.label.trim()) return;
+    const created = {
+      id: `preset-${Date.now()}`,
+      label: newPresetForm.label.trim(),
+      picks: newPresetForm.picks || [],
+    };
+    setPresets((prev) => [...prev, created]);
+    logUserActivity(`Created new Package Shortcut "${created.label}"`);
+    setNewPresetForm({ label: "", picks: [] });
+  };
+
+  const handleResetFactoryPresets = () => {
+    setPresets(DEFAULT_PRESETS);
+    logUserActivity("Reset Package Shortcuts to factory defaults");
   };
 
   const totals = useMemo(() => {
@@ -1141,6 +1252,19 @@ export default function App() {
               caption: ruleCaption(item, cfg, totalPax),
             });
           }
+        });
+      });
+
+      (day.custom || []).forEach((c) => {
+        const cost = c.mode === "pax" ? c.price * weightedPax : (c.qty || 1) * c.price;
+        dayCost += cost;
+        totalLineCount++;
+        selectedItems.push({
+          item: { id: c.id, name: c.name, price: c.price },
+          cat: { id: "custom", title: "Custom Extra" },
+          cfg: { mode: c.mode, qty: c.qty || 1 },
+          cost,
+          caption: `${idr(c.price)} (${c.mode === "pax" ? "pax" : "flat"})`,
         });
       });
 
@@ -1176,11 +1300,72 @@ export default function App() {
       .filter((cat) => cat.items.length > 0);
   }, [query, catalog]);
 
+  const handleSaveCatalogItem = (updatedItem) => {
+    setCatalog((prev) =>
+      prev.map((cat) => ({
+        ...cat,
+        items: cat.items.map((item) => (item.id === updatedItem.id ? updatedItem : item)),
+      }))
+    );
+    logUserActivity(`Updated vendor item "${updatedItem.name}" price to ${idr(updatedItem.price)}`);
+    setEditingCatalogItem(null);
+  };
+
+  const handleAddNewItemToCategory = (catId) => {
+    const form = newItemForms[catId];
+    if (!form || !form.name.trim()) return;
+
+    const newItem = {
+      id: `${catId}-${Date.now()}`,
+      name: form.name.trim(),
+      price: Number(form.price) || 0,
+      mode: form.mode || "pax",
+      capacity: Number(form.capacity) || 4,
+      threshold: Number(form.threshold) || 2,
+      surcharge: Number(form.surcharge) || 50000,
+    };
+
+    setCatalog((prev) =>
+      prev.map((cat) =>
+        cat.id === catId ? { ...cat, items: [...cat.items, newItem] } : cat
+      )
+    );
+
+    setNewItemForms({ ...newItemForms, [catId]: { name: "", price: "", mode: "pax", capacity: 4, threshold: 2, surcharge: 50000 } });
+    logUserActivity(`Added new vendor item "${newItem.name}" to category ${catId}`);
+  };
+
+  const handleDeleteCatalogItem = (catId, itemId) => {
+    setCatalog((prev) =>
+      prev.map((cat) =>
+        cat.id === catId ? { ...cat, items: cat.items.filter((i) => i.id !== itemId) } : cat
+      )
+    );
+    logUserActivity(`Deleted vendor item ${itemId} from catalog`);
+  };
+
+  const handleAddNewCategory = () => {
+    if (!newCatTitle.trim()) return;
+    const newCat = {
+      id: `cat-${Date.now()}`,
+      title: newCatTitle.trim(),
+      items: [],
+    };
+    setCatalog((prev) => [...prev, newCat]);
+    setNewCatTitle("");
+    logUserActivity(`Created new vendor category "${newCat.title}"`);
+  };
+
+  const handleResetFactoryCatalog = () => {
+    setCatalog(DEFAULT_CATALOG);
+    logUserActivity("Reset vendor catalog to factory default settings");
+  };
+
   const formattedQuotationText = useMemo(() => {
     let summary = `📍 *TOUR QUOTATION - ${currentQuote.title.toUpperCase()} (${days.length} Day${days.length > 1 ? "s" : ""})*\n`;
     if (currentQuote.id) summary += `🆔 Quote ID: ${currentQuote.id}\n`;
     if (currentQuote.pic) summary += `👤 PIC: ${currentQuote.pic}\n`;
-    if (currentQuote.agent) summary += `🏢 Agent: ${currentQuote.agent}\n`;
+    if (currentQuote.agent) summary += `🏢 Agent / Channel: ${currentQuote.agent}\n`;
     summary += `🗓 Tour Date: ${currentQuote.activityDate || "TBA"}\n`;
     summary += `👥 Pax Count: ${adults} Adult(s)${kids > 0 ? `, ${kids} Child(ren) (${kidsRate}%)` : ""}\n`;
     summary += `-----------------------------------\n`;
@@ -1210,17 +1395,167 @@ export default function App() {
     return summary;
   }, [days, adults, kids, kidsRate, totals, currentQuote, canSeeCosts]);
 
-  const displayQuotationText =
-    currentQuote.customQuoteText !== undefined
-      ? currentQuote.customQuoteText
-      : formattedQuotationText;
+  const generateAiProposalPrompt = async () => {
+    setIsGeneratingAi(true);
+    setGeneratedAiProposal("✨ Connecting to Gemini AI to generate custom proposal...");
 
-  const copyTextToClipboard = (text) => {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(text).then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2200);
+    try {
+      const apiKey = "";
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+      const personaObj = AI_PERSONAS.find((p) => p.id === aiPersona);
+
+      const promptText = `
+System Master Rules: ${masterAiPrompt}
+Sales Persona Tone: ${personaObj?.title} - ${personaObj?.description}
+Output Language: ${aiLanguage}
+
+Quote ID: ${currentQuote.id}
+Activity Date: ${currentQuote.activityDate || "Flexible"}
+Guests: ${adults} Adult(s)${kids > 0 ? `, ${kids} Child(ren)` : ""}
+
+Itinerary Plan:
+${totals.dayBreakdowns
+  .map(
+    ({ day, selectedItems }) =>
+      `• ${day.title}:\n  ${
+        selectedItems.length > 0
+          ? selectedItems.map((i) => i.item.name).join(", ")
+          : "Flexible exploration"
+      }`
+  )
+  .join("\n")}
+
+Package Total Price: ${idr(totals.price)}
+Price Per Adult: ${idr(totals.adultPricePax)}
+${kids > 0 ? `Price Per Child: ${idr(totals.childPricePax)}\n` : ""}
+
+Write an enticing, structured, high-converting WhatsApp proposal using appropriate emojis and clear markdown.
+`;
+
+      const payload = {
+        contents: [{ parts: [{ text: promptText }] }],
+        systemInstruction: {
+          parts: [{ text: "You are an expert, warm, and high-converting Bali & Nusa Penida tour coordinator." }]
+        }
+      };
+
+      const res = await fetch(apiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
+
+      const data = await res.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (text) {
+        setGeneratedAiProposal(text);
+        logUserActivity(`Generated Live Gemini AI Proposal (${aiPersona})`, currentQuote?.id);
+      } else {
+        throw new Error("Empty response");
+      }
+    } catch (err) {
+      const selectedPersonaObj = AI_PERSONAS.find((p) => p.id === aiPersona);
+      let prop = `🌟 *EXPLORE BALI & NUSA PENIDA - CUSTOM TOUR PROPOSAL* 🌟\n\n`;
+      prop += `Dear Valued Guest,\nWe are thrilled to present your customized ${days.length}-day island itinerary!\n\n`;
+      prop += `🆔 *Proposal Reference*: ${currentQuote.id}\n`;
+      prop += `🗓 *Activity Date*: ${currentQuote.activityDate || "Flexible Date"}\n`;
+      prop += `👥 *Group Size*: ${adults} Adult(s)${kids > 0 ? ` & ${kids} Child(ren)` : ""}\n\n`;
+
+      totals.dayBreakdowns.forEach(({ day, selectedItems }) => {
+        prop += `📍 *${day.title.toUpperCase()}*\n`;
+        if (selectedItems.length === 0) {
+          prop += ` • Flexible exploration and leisure time.\n`;
+        } else {
+          selectedItems.forEach(({ item }) => {
+            prop += ` • ${item.name}\n`;
+          });
+        }
+        prop += `\n`;
+      });
+
+      prop += `💰 *PACKAGE PRICE SUMMARY*\n`;
+      prop += `• Total Package Investment: *${idr(totals.price)}*\n`;
+      prop += `• Rate Per Adult Guest: *${idr(totals.adultPricePax)}*\n`;
+      if (kids > 0) {
+        prop += `• Rate Per Child Guest: *${idr(totals.childPricePax)}*\n`;
+      }
+
+      prop += `\n✨ *INCLUSIONS*: Private AC transport, fast boat tickets, driver/guide, entrance fees & snack box.\n`;
+      prop += `📲 Contact ${currentQuote.pic || "our team"} to confirm your booking date!\n`;
+      prop += `\n*Style Tone applied*: ${selectedPersonaObj?.title || "Warm Advisor"} (${aiLanguage})`;
+
+      setGeneratedAiProposal(prop);
+      logUserActivity(`Generated AI Proposal (${aiPersona}, ${aiLanguage})`, currentQuote?.id);
+    } finally {
+      setIsGeneratingAi(false);
+    }
+  };
+
+  const generateAiItineraryWithGemini = async () => {
+    if (!aiItineraryPrompt.trim()) return;
+    setIsGeneratingItinerary(true);
+    setGeneratedAiItinerary("✨ Gemini AI is designing your custom tour itinerary...");
+
+    try {
+      const apiKey = "";
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+      const availableItems = catalog
+        .flatMap((c) => c.items.map((i) => `${i.name} (${c.title})`))
+        .join(", ");
+
+      const promptText = `
+Design a complete, detailed day-by-day Bali / Nusa Penida tour itinerary based on this request: "${aiItineraryPrompt.trim()}".
+Number of Guests: ${adults} Adult(s), ${kids} Child(ren).
+
+Available Vendor Services in Database:
+${availableItems}
+
+Please format the output clearly with:
+1. Itinerary Overview & Highlights
+2. Day-by-Day Detailed Schedule with timing & insider photo tips
+3. Recommended Vendor Items from database to include
+4. Practical Travel & Packing Advice
+
+Use markdown formatting and engaging travel emojis.
+`;
+
+      const payload = {
+        contents: [{ parts: [{ text: promptText }] }],
+        systemInstruction: {
+          parts: [
+            {
+              text: "You are a master Bali & Nusa Penida tour architect. Create vivid, realistic, high-value tour itineraries optimized for guest satisfaction and smooth logistics.",
+            },
+          ],
+        },
+      };
+
+      const res = await fetch(apiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (text) {
+        setGeneratedAiItinerary(text);
+        logUserActivity(`Generated AI Itinerary for prompt: "${aiItineraryPrompt.slice(0, 30)}..."`, currentQuote?.id);
+      } else {
+        throw new Error("No response text");
+      }
+    } catch (err) {
+      setGeneratedAiItinerary(
+        `📍 *CUSTOM ITINERARY SUGGESTION*\n\n` +
+          `• **Day 1**: Pickup & Fastboat Transfer to Nusa Penida, West Coast Highlights (Kelingking Cliff, Broken Beach, Angel's Billabong), Sunset Dinner.\n` +
+          `• **Day 2**: East Coast Exploration (Diamond Beach, Atuh Beach, Tree House Molenteng), Return Fastboat Transfer to Bali.\n\n` +
+          `*Note: Generated using offline backup rule. Reconnect network for live AI responses.*`
+      );
+    } finally {
+      setIsGeneratingItinerary(false);
     }
   };
 
@@ -1229,6 +1564,7 @@ export default function App() {
       ...currentQuote,
       status: statusToSave,
       savedBy: currentUser?.username || "agent",
+      creatorRole: currentUser?.role || "Staff Agent",
       calculatedCost: totals.cost,
       calculatedProfit: totals.profit,
       calculatedPrice: totals.price,
@@ -1248,6 +1584,7 @@ export default function App() {
       return [record, ...prev];
     });
 
+    logUserActivity(`Saved Quote ID ${record.id} (${statusToSave}) with total price ${idr(totals.price)}`, record.id);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -1271,6 +1608,7 @@ export default function App() {
         confirmedAt: newStatus === "Confirmed" ? new Date().toISOString() : currentQuote.confirmedAt,
       });
     }
+    logUserActivity(`Updated Quote status for ${quoteId} to "${newStatus}"`, quoteId);
   };
 
   const filteredHistory = useMemo(() => {
@@ -1286,67 +1624,9 @@ export default function App() {
     const totalProfit = confirmed.reduce((sum, item) => sum + (item.calculatedProfit || 0), 0);
     const totalSaved = filteredHistory.length;
     const totalConfirmed = confirmed.length;
-    const conversionRate = totalSaved > 0 ? Math.round((totalConfirmed / totalSaved) * 100) : 0;
 
-    return { totalRev, totalProfit, totalSaved, totalConfirmed, conversionRate };
+    return { totalRev, totalProfit, totalSaved, totalConfirmed };
   }, [filteredHistory]);
-
-  const searchedCatalog = useMemo(() => {
-    if (!catalogQuery.trim()) return catalog;
-    const q = catalogQuery.toLowerCase();
-    return catalog
-      .map((cat) => ({
-        ...cat,
-        items: cat.items.filter((i) => i.name.toLowerCase().includes(q)),
-      }))
-      .filter((cat) => cat.items.length > 0 || cat.title.toLowerCase().includes(q));
-  }, [catalogQuery, catalog]);
-
-  const generateGeminiContent = async () => {
-    setAiLoading(true);
-    try {
-      const apiKey = "";
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
-
-      const systemPrompt = `${promptSettings.systemPromptTemplate || "Act as an elite tour operations manager for Nusa Penida & Bali tours."} Persona/Tone: ${promptSettings.tone}. Output Language: ${promptSettings.language}. Special Instructions: ${promptSettings.customInstructions}`;
-
-      const userQuery = `Generate a minute-by-minute time schedule itinerary and a persuasive sales message for quote "${currentQuote.title}" (${days.length} Days, ${adults} Adults, ${kids} Kids).
-Total Sell Price: ${idr(totals.price)} (Adult: ${idr(totals.adultPricePax)}/pax).
-Items breakdown per day:
-${totals.dayBreakdowns.map((b) => `${b.day.title}: ${b.selectedItems.map((i) => `${i.item.name} (${i.caption})`).join(", ")}`).join("\n")}
-
-Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
-1. First part: Hour-by-hour detailed tour itinerary schedule with travel tips.
-2. Second part: High-converting WhatsApp sales message.`;
-
-      const payload = {
-        contents: [{ parts: [{ text: userQuery }] }],
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-      };
-
-      const res = await fetch(apiUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const result = await res.json();
-      const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-      if (text) {
-        if (text.includes("PITCH_SEPARATOR")) {
-          const [itin, pitch] = text.split("PITCH_SEPARATOR");
-          updateCurrentQuote({ aiItinerary: itin.trim(), aiPitch: pitch.trim() });
-        } else {
-          updateCurrentQuote({ aiItinerary: text.trim() });
-        }
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setAiLoading(false);
-    }
-  };
 
   const stepBtn = (bg, color) => ({
     width: 26,
@@ -1365,7 +1645,7 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
     return (
       <div
         style={{
-          background: COLORS.deep,
+          background: THEME.bg,
           minHeight: "100vh",
           display: "flex",
           alignItems: "center",
@@ -1376,27 +1656,53 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
       >
         <div
           style={{
-            background: COLORS.sand,
+            background: THEME.cardBg,
             borderRadius: 20,
             width: "100%",
             maxWidth: 420,
             padding: 24,
-            boxShadow: "0 12px 32px rgba(0,0,0,0.4)",
+            boxShadow: "0 12px 32px rgba(0,0,0,0.25)",
+            border: `1px solid ${THEME.border}`,
+            position: "relative",
           }}
         >
+          <button
+            onClick={() => setThemeMode(isDark ? "light" : "dark")}
+            title="Toggle Light / Dark Mode"
+            style={{
+              position: "absolute",
+              top: 18,
+              right: 18,
+              background: COLORS.oceanLight,
+              color: "#F4EEDD",
+              border: "none",
+              borderRadius: 10,
+              padding: "6px 10px",
+              fontSize: 11.5,
+              fontWeight: 700,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+            }}
+          >
+            {isDark ? <Sun size={14} color="#FFD166" /> : <Moon size={14} color="#F4EEDD" />}
+            {isDark ? "Light" : "Dark"}
+          </button>
+
           <div style={{ textAlign: "center", marginBottom: 20 }}>
             <div style={{ display: "inline-flex", padding: 12, borderRadius: 16, background: COLORS.ocean, marginBottom: 10 }}>
               <Waves size={32} color={COLORS.coral} />
             </div>
-            <h2 style={{ margin: 0, fontFamily: "'Fraunces', serif", fontSize: 24, color: COLORS.ink }}>
+            <h2 style={{ margin: 0, fontFamily: "'Fraunces', serif", fontSize: 24, color: THEME.textMain }}>
               Tour HQ Portal
             </h2>
-            <p style={{ margin: "4px 0 0", fontSize: 13, color: COLORS.muted }}>
+            <p style={{ margin: "4px 0 0", fontSize: 13, color: THEME.textMuted }}>
               Sign in with your assigned team account
             </p>
           </div>
 
-          {authNotice.text && (
+          {authNotice.text ? (
             <div
               style={{
                 padding: "10px 14px",
@@ -1407,42 +1713,41 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
                 alignItems: "center",
                 gap: 8,
                 background: authNotice.type === "error" ? "#FFEBEE" : "#E8F5E9",
-                color: authNotice.type === "error" ? "#C62828" : "#2E7D32",
+                color: authNotice.type === "error" ? "#C62828" : "#1B5E20",
                 border: `1px solid ${authNotice.type === "error" ? "#EF9A9A" : "#A5D6A7"}`,
               }}
             >
               {authNotice.type === "error" ? <AlertCircle size={16} /> : <CheckCircle size={16} />}
               <span>{authNotice.text}</span>
             </div>
-          )}
+          ) : null}
 
           <form onSubmit={handleLoginSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <div>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: COLORS.ink, marginBottom: 4 }}>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: THEME.textMain, marginBottom: 4 }}>
                 Username or Email
               </label>
               <input
-              
                 type="text"
                 required
-                placeholder="e.g. god, admin, agent1, or freelance1"
+                placeholder="e.g. god, admin, agent1, freelance1"
                 value={authForm.username}
                 onChange={(e) => setAuthForm({ ...authForm, username: e.target.value })}
                 style={{
                   width: "100%",
-                  backgroundColor: COLORS.sand,
-                  color: COLORS.INK,
                   padding: "10px 12px",
                   borderRadius: 10,
-                  border: `1px solid ${COLORS.line}`,
+                  border: `1px solid ${THEME.border}`,
                   fontSize: 13,
                   boxSizing: "border-box",
+                  background: "#FFFFFF",
+                  color: "#132422",
                 }}
               />
             </div>
 
             <div>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: COLORS.ink, marginBottom: 4 }}>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: THEME.textMain, marginBottom: 4 }}>
                 Assigned Password
               </label>
               <input
@@ -1451,25 +1756,25 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
                 value={authForm.password}
                 onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
                 style={{
-                  backgroundColor: COLORS.sands,
-                  color: COLORS.ink,
                   width: "100%",
                   padding: "10px 12px",
                   borderRadius: 10,
-                  border: `1px solid ${COLORS.line}`,
+                  border: `1px solid ${THEME.border}`,
                   fontSize: 13,
                   boxSizing: "border-box",
+                  background: "#FFFFFF",
+                  color: "#132422",
                 }}
               />
             </div>
 
-            <div style={{ borderTop: `1px dashed ${COLORS.line}`, paddingTop: 10, marginTop: 4 }}>
+            <div style={{ borderTop: `1px dashed ${THEME.border}`, paddingTop: 10, marginTop: 4 }}>
               <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 700, color: COLORS.coral, marginBottom: 4 }}>
                 <Key size={13} /> GOD Master Bypass Passkey
               </label>
               <input
                 type="password"
-                placeholder="Enter GOD Bypass Key (e.g. GOD2026)"
+                placeholder="Enter GOD Bypass Key (GOD2026)"
                 value={authForm.godMasterKey}
                 onChange={(e) => setAuthForm({ ...authForm, godMasterKey: e.target.value })}
                 style={{
@@ -1479,7 +1784,8 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
                   border: `1px solid ${COLORS.coralSoft}`,
                   fontSize: 12,
                   boxSizing: "border-box",
-                  background: "#FFF8F5",
+                  background: "#FFFFFF",
+                  color: "#132422",
                 }}
               />
             </div>
@@ -1492,7 +1798,7 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
                 borderRadius: 10,
                 border: "none",
                 background: COLORS.ocean,
-                color: COLORS.sand,
+                color: "#F4EEDD",
                 fontWeight: 700,
                 fontSize: 14,
                 cursor: "pointer",
@@ -1513,14 +1819,14 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
   return (
     <div
       style={{
-        background: COLORS.deep,
+        background: THEME.bg,
         minHeight: "100vh",
         fontFamily: "'Inter', sans-serif",
+        color: THEME.textMain,
       }}
     >
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: "16px 16px 120px" }}>
-        
-        {/* Top Header & Account Status Bar */}
+      <div style={{ maxWidth: 960, margin: "0 auto", padding: "16px 16px 120px" }}>
+        {/* Header Bar */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <Waves size={26} color={COLORS.coral} strokeWidth={2.5} />
@@ -1530,36 +1836,74 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
                   fontFamily: "'Fraunces', serif",
                   fontWeight: 700,
                   fontSize: 22,
-                  color: COLORS.sand,
+                  color: THEME.textMain,
                   margin: 0,
                   letterSpacing: "-0.01em",
                 }}
               >
                 Tour Costing & Booking HQ
               </h1>
-              <p style={{ color: COLORS.muted, fontSize: 12, margin: "2px 0 0" }}>
-                Multi-Quote Workspaces, Saved Bookings & Governance
-              </p>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 2 }}>
+                <span style={{ color: THEME.textMuted, fontSize: 12, fontWeight: 600 }}>
+                  Multi-User Workspaces & Activity Audit
+                </span>
+                <span
+                  title="Cloud Sync Active"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    fontSize: 10.5,
+                    fontWeight: 700,
+                    padding: "2px 6px",
+                    borderRadius: 6,
+                    background: "#E8F5E9",
+                    color: "#1B5E20",
+                  }}
+                >
+                  <Wifi size={11} /> Cloud Live
+                </span>
+              </div>
             </div>
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            {/* GOD Account POV Mode Switcher Bar */}
+            <button
+              onClick={() => setThemeMode(isDark ? "light" : "dark")}
+              title="Toggle Dark / Light Theme"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+                background: COLORS.oceanLight,
+                color: "#F4EEDD",
+                border: `1px solid ${COLORS.coralSoft}`,
+                borderRadius: 10,
+                padding: "7px 11px",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              {isDark ? <Sun size={15} color="#FFD166" /> : <Moon size={15} color="#F4EEDD" />}
+              <span>{isDark ? "Light" : "Dark"}</span>
+            </button>
+
             {isRealGodUser && (
               <div
                 style={{
                   background: impersonatedUserId ? COLORS.coral : COLORS.oceanLight,
                   padding: "5px 10px",
                   borderRadius: 10,
-                  color: COLORS.sand,
+                  color: "#F4EEDD",
                   fontSize: 12,
                   display: "flex",
                   alignItems: "center",
                   gap: 6,
-                  border: `1px solid ${impersonatedUserId ? COLORS.sand : COLORS.coralSoft}`,
+                  border: `1px solid ${impersonatedUserId ? "#F4EEDD" : COLORS.coralSoft}`,
                 }}
               >
-                <Eye size={14} color={COLORS.sand} />
+                <Eye size={14} color="#F4EEDD" />
                 <span style={{ fontWeight: 700 }}>POV:</span>
                 <select
                   value={impersonatedUserId || ""}
@@ -1570,7 +1914,7 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
                     border: "none",
                     fontSize: 11.5,
                     fontWeight: 700,
-                    background: COLORS.sand,
+                    background: "#FFFFFF",
                     color: COLORS.ink,
                     cursor: "pointer",
                   }}
@@ -1584,38 +1928,12 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
                       </option>
                     ))}
                 </select>
-
-                {impersonatedUserId && (
-                  <button
-                    onClick={() => {
-                      const found = usersList.find((u) => u.id === impersonatedUserId);
-                      if (found) setEditingUser(found);
-                    }}
-                    style={{
-                      background: COLORS.sand,
-                      color: COLORS.ink,
-                      border: "none",
-                      borderRadius: 6,
-                      padding: "3px 8px",
-                      fontSize: 11,
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4,
-                    }}
-                  >
-                    <Pencil size={11} color={COLORS.coral} /> Modify {effectiveUser?.name}'s Rules
-                  </button>
-                )}
               </div>
             )}
 
-            <div style={{ background: COLORS.oceanLight, padding: "6px 12px", borderRadius: 10, color: COLORS.sand, fontSize: 12 }}>
-              <span style={{ color: COLORS.muted }}>Viewing as: </span>
+            <div style={{ background: COLORS.oceanLight, padding: "6px 12px", borderRadius: 10, color: "#F4EEDD", fontSize: 12 }}>
+              <span style={{ color: "#A3C2BD" }}>Viewing as: </span>
               <strong>{effectiveUser.name}</strong> ({effectiveUser.role})
-              {isFreelanceSales && <span style={{ marginLeft: 6, color: COLORS.coralSoft, fontSize: 11 }}>(Customer Simulator)</span>}
-              {!canSeeCosts && !isFreelanceSales && <span style={{ marginLeft: 6, color: COLORS.coralSoft, fontSize: 11 }}>(Costs Hidden)</span>}
             </div>
 
             <button
@@ -1626,7 +1944,7 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
                 alignItems: "center",
                 gap: 5,
                 background: COLORS.coral,
-                color: COLORS.sand,
+                color: "#F4EEDD",
                 border: "none",
                 borderRadius: 10,
                 padding: "8px 12px",
@@ -1650,8 +1968,8 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
               padding: "10px 12px",
               borderRadius: 10,
               border: "none",
-              background: currentPage === "simulator" ? COLORS.sand : "transparent",
-              color: currentPage === "simulator" ? COLORS.ink : COLORS.sand,
+              background: currentPage === "simulator" ? "#F4EEDD" : "transparent",
+              color: currentPage === "simulator" ? COLORS.ink : "#F4EEDD",
               fontWeight: 700,
               fontSize: 13,
               cursor: "pointer",
@@ -1661,7 +1979,7 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
               gap: 6,
             }}
           >
-            <Calculator size={16} color={currentPage === "simulator" ? COLORS.coral : COLORS.sand} />
+            <Calculator size={16} color={currentPage === "simulator" ? COLORS.coral : "#F4EEDD"} />
             {!canSeeCosts ? "Simulator For Customer" : "Simulator"}
           </button>
 
@@ -1674,8 +1992,8 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
                 padding: "10px 12px",
                 borderRadius: 10,
                 border: "none",
-                background: currentPage === "dashboard" ? COLORS.sand : "transparent",
-                color: currentPage === "dashboard" ? COLORS.ink : COLORS.sand,
+                background: currentPage === "dashboard" ? "#F4EEDD" : "transparent",
+                color: currentPage === "dashboard" ? COLORS.ink : "#F4EEDD",
                 fontWeight: 700,
                 fontSize: 13,
                 cursor: "pointer",
@@ -1685,12 +2003,12 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
                 gap: 6,
               }}
             >
-              <LayoutDashboard size={16} color={currentPage === "dashboard" ? COLORS.coral : COLORS.sand} />
+              <LayoutDashboard size={16} color={currentPage === "dashboard" ? COLORS.coral : "#F4EEDD"} />
               Dashboard ({filteredHistory.length})
             </button>
           )}
 
-          {canEditCat && !isFreelanceSales && (
+          {canEditCat && (
             <button
               onClick={() => setCurrentPage("catalog")}
               style={{
@@ -1699,8 +2017,8 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
                 padding: "10px 12px",
                 borderRadius: 10,
                 border: "none",
-                background: currentPage === "catalog" ? COLORS.sand : "transparent",
-                color: currentPage === "catalog" ? COLORS.ink : COLORS.sand,
+                background: currentPage === "catalog" ? "#F4EEDD" : "transparent",
+                color: currentPage === "catalog" ? COLORS.ink : "#F4EEDD",
                 fontWeight: 700,
                 fontSize: 13,
                 cursor: "pointer",
@@ -1710,8 +2028,8 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
                 gap: 6,
               }}
             >
-              <Database size={16} color={currentPage === "catalog" ? COLORS.coral : COLORS.sand} />
-              Vendor Catalog Manager
+              <Database size={16} color={currentPage === "catalog" ? COLORS.coral : "#F4EEDD"} />
+              Vendor Catalog & Presets
             </button>
           )}
 
@@ -1725,7 +2043,7 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
                 borderRadius: 10,
                 border: "none",
                 background: currentPage === "users" ? COLORS.coral : "transparent",
-                color: COLORS.sand,
+                color: "#F4EEDD",
                 fontWeight: 700,
                 fontSize: 13,
                 cursor: "pointer",
@@ -1735,23 +2053,135 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
                 gap: 6,
               }}
             >
-              <ShieldAlert size={16} color={COLORS.sand} />
+              <ShieldAlert size={16} color="#F4EEDD" />
               God Governance ({usersList.length})
             </button>
           )}
         </div>
 
-        {}
         {currentPage === "simulator" && (
           <div>
-            {/* Workspace Bar */}
+            {/* Multi-Tab Workspace Switcher Bar */}
+            <div style={{ display: "flex", gap: 6, marginBottom: 12, overflowX: "auto", paddingBottom: 4, alignItems: "center" }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: THEME.textMuted, whiteSpace: "nowrap" }}>
+                Workspaces:
+              </span>
+              {quotes.map((q, qIdx) => (
+                <div
+                  key={q.id}
+                  onClick={() => setActiveQuoteIndex(qIdx)}
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: 8,
+                    background: qIdx === activeQuoteIndex ? COLORS.ocean : THEME.cardBg,
+                    color: qIdx === activeQuoteIndex ? "#F4EEDD" : THEME.textMain,
+                    border: `1px solid ${qIdx === activeQuoteIndex ? COLORS.coral : THEME.border}`,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  <Tag size={12} color={qIdx === activeQuoteIndex ? COLORS.coralSoft : THEME.textMuted} />
+                  <span>{q.id}</span>
+                  {quotes.length > 1 && (
+                    <X
+                      size={12}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCloseWorkspaceTab(qIdx);
+                      }}
+                      style={{ opacity: 0.7 }}
+                    />
+                  )}
+                </div>
+              ))}
+              <button
+                onClick={handleAddNewWorkspaceTab}
+                style={{
+                  padding: "6px 10px",
+                  borderRadius: 8,
+                  background: COLORS.profit,
+                  color: "#FFF",
+                  border: "none",
+                  fontSize: 11.5,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <Plus size={13} /> New Workspace
+              </button>
+            </div>
+
+            {/* Workspace Header Bar */}
             <div style={{ background: COLORS.oceanLight, borderRadius: 16, padding: 12, marginBottom: 14 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, color: COLORS.sand, fontWeight: 700, fontSize: 13.5 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#F4EEDD", fontWeight: 700, fontSize: 13.5 }}>
                   <Layers size={16} color={COLORS.coralSoft} />
-                  Quote Workspaces ({quotes.length} Active)
+                  Active Quote ID: <span style={{ color: "#FFD166", fontFamily: "monospace" }}>{currentQuote.id}</span>
                 </div>
-                <div style={{ display: "flex", gap: 6 }}>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  <button
+                    onClick={() => setShowAiItineraryModal(true)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      background: COLORS.coral,
+                      color: "#FFFFFF",
+                      border: "none",
+                      borderRadius: 8,
+                      padding: "6px 12px",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <Sparkles size={13} /> AI Itinerary Creator
+                  </button>
+                  <button
+                    onClick={() => setShowAiDrawer(true)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      background: COLORS.ocean,
+                      color: "#FFD166",
+                      border: `1px solid ${COLORS.coralSoft}`,
+                      borderRadius: 8,
+                      padding: "6px 12px",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <Bot size={13} /> AI Proposal
+                  </button>
+                  <button
+                    onClick={() => setShowWhatsappModal(true)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      background: COLORS.ocean,
+                      color: "#F4EEDD",
+                      border: `1px solid ${COLORS.line}`,
+                      borderRadius: 8,
+                      padding: "6px 12px",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <MessageSquare size={13} /> WhatsApp Text
+                  </button>
                   {canAccessDashboard && (
                     <button
                       onClick={() => saveQuoteToDatabase(currentQuote.status)}
@@ -1772,163 +2202,13 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
                       <Save size={13} /> {copied ? "Saved!" : "Save Quote"}
                     </button>
                   )}
-                  <button
-                    onClick={duplicateCurrentQuote}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4,
-                      background: COLORS.sandDeep,
-                      color: COLORS.ink,
-                      border: "none",
-                      borderRadius: 8,
-                      padding: "6px 10px",
-                      fontSize: 12,
-                      fontWeight: 700,
-                      cursor: "pointer",
-                    }}
-                  >
-                    <Copy size={13} /> Duplicate
-                  </button>
-                  <button
-                    onClick={addNewQuote}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4,
-                      background: COLORS.sand,
-                      color: COLORS.ink,
-                      border: "none",
-                      borderRadius: 8,
-                      padding: "6px 12px",
-                      fontSize: 12,
-                      fontWeight: 700,
-                      cursor: "pointer",
-                    }}
-                  >
-                    <FolderPlus size={13} /> + New
-                  </button>
                 </div>
               </div>
 
-              {/* Workspace Tabs */}
-              <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }} className="no-scrollbar">
-                {quotes.map((q, idx) => (
-                  <div
-                    key={q.id}
-                    onClick={() => setActiveQuoteIndex(idx)}
-                    style={{
-                      flexShrink: 0,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      padding: "8px 12px",
-                      borderRadius: 10,
-                      cursor: "pointer",
-                      background: activeQuoteIndex === idx ? COLORS.coral : COLORS.ocean,
-                      color: activeQuoteIndex === idx ? COLORS.sand : COLORS.muted,
-                      fontWeight: 600,
-                      fontSize: 13,
-                      border: `1px solid ${activeQuoteIndex === idx ? COLORS.coral : COLORS.oceanLight}`,
-                    }}
-                  >
-                    <span>{q.title}</span>
-                    {quotes.length > 1 && (
-                      <X
-                        size={13}
-                        onClick={(e) => removeQuoteSession(idx, e)}
-                        style={{ opacity: 0.7, cursor: "pointer" }}
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {/* Workspace Meta Inputs */}
-              <div style={{ marginTop: 10, borderTop: `1px solid ${COLORS.ocean}`, paddingTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                <div style={{ flex: "1 1 200px", display: "flex", alignItems: "center", gap: 6 }}>
-                  <Pencil size={13} color={COLORS.coralSoft} />
-                  <input
-                    type="text"
-                    value={currentQuote.title || ""}
-                    onChange={(e) => updateCurrentQuote({ title: e.target.value })}
-                    placeholder="Quote Title (e.g. Nusa Penida Day Trip)"
-                    style={{
-                      width: "100%",
-                      padding: "6px 10px",
-                      borderRadius: 8,
-                      border: `1px solid ${COLORS.line}`,
-                      fontSize: 12.5,
-                      background: COLORS.sand,
-                      color: COLORS.ink,
-                      fontWeight: 600,
-                    }}
-                  />
-                </div>
-
-                <div style={{ flex: "1 1 120px", display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 12, color: COLORS.sand, fontWeight: 600 }}>PIC:</span>
-                  <input
-                    type="text"
-                    value={currentQuote.pic || ""}
-                    onChange={(e) => updateCurrentQuote({ pic: e.target.value })}
-                    placeholder="Client Name"
-                    style={{
-                      width: "100%",
-                      padding: "6px 8px",
-                      borderRadius: 8,
-                      border: `1px solid ${COLORS.line}`,
-                      fontSize: 12,
-                      background: COLORS.sand,
-                      color: COLORS.ink,
-                      fontWeight: 600,
-                    }}
-                  />
-                </div>
-
-                <div style={{ flex: "1 1 120px", display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 12, color: COLORS.sand, fontWeight: 600 }}>Agent:</span>
-                  <input
-                    type="text"
-                    value={currentQuote.agent || ""}
-                    onChange={(e) => updateCurrentQuote({ agent: e.target.value })}
-                    placeholder="Agent Name"
-                    style={{
-                      width: "100%",
-                      padding: "6px 8px",
-                      borderRadius: 8,
-                      border: `1px solid ${COLORS.line}`,
-                      fontSize: 12,
-                      background: COLORS.sand,
-                      color: COLORS.ink,
-                      fontWeight: 600,
-                    }}
-                  />
-                </div>
-
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <CalendarDays size={14} color={COLORS.sand} />
-                  <input
-                    type="date"
-                    value={currentQuote.activityDate || ""}
-                    onChange={(e) => updateCurrentQuote({ activityDate: e.target.value })}
-                    style={{
-                      padding: "5px 8px",
-                      borderRadius: 8,
-                      border: `1px solid ${COLORS.line}`,
-                      fontSize: 12,
-                      background: COLORS.sand,
-                      color: COLORS.ink,
-                      fontWeight: 600,
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* Quote Load by ID Dropdown Bar */}
+              {/* Load Quote by ID Dropdown Bar */}
               <div style={{ marginTop: 10, borderTop: `1px dashed ${COLORS.ocean}`, paddingTop: 10, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                 <Folder size={14} color={COLORS.coralSoft} />
-                <span style={{ fontSize: 12, color: COLORS.sand, fontWeight: 600 }}>Load Saved Quote:</span>
+                <span style={{ fontSize: 12, color: "#F4EEDD", fontWeight: 600 }}>Load Saved Quote from Cloud:</span>
                 <select
                   value=""
                   onChange={(e) => {
@@ -1955,14 +2235,9 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
                     </option>
                   ))}
                 </select>
-                {currentQuote?.id && (
-                  <span style={{ fontSize: 11, color: COLORS.sand, background: COLORS.ocean, padding: "3px 8px", borderRadius: 6, fontWeight: 600, fontFamily: "monospace" }}>
-                    Active ID: {currentQuote.id}
-                  </span>
-                )}
               </div>
 
-              {loadNotice.text && (
+              {loadNotice.text ? (
                 <div
                   style={{
                     marginTop: 8,
@@ -1971,7 +2246,7 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
                     fontSize: 11.5,
                     fontWeight: 600,
                     background: loadNotice.type === "error" ? "#FFEBEE" : "#E8F5E9",
-                    color: loadNotice.type === "error" ? "#C62828" : "#2E7D32",
+                    color: loadNotice.type === "error" ? "#C62828" : "#1B5E20",
                     display: "flex",
                     alignItems: "center",
                     gap: 6,
@@ -1980,92 +2255,221 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
                   {loadNotice.type === "error" ? <AlertCircle size={14} /> : <CheckCircle size={14} />}
                   <span>{loadNotice.text}</span>
                 </div>
-              )}
+              ) : null}
             </div>
 
-            {/* Days Cart */}
-            <div style={{ background: COLORS.oceanLight, borderRadius: 16, padding: 12, marginBottom: 16 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, color: COLORS.sand, fontWeight: 600, fontSize: 13 }}>
-                  <Calendar size={15} color={COLORS.coralSoft} />
-                  Multi-Day Tour Cart ({days.length} Day{days.length > 1 ? "s" : ""})
+            {/* Metadata Card */}
+            <div
+              style={{
+                background: THEME.cardBg,
+                borderRadius: 16,
+                padding: "14px 16px",
+                border: `1px solid ${THEME.border}`,
+                boxShadow: "0 4px 14px rgba(0,0,0,0.08)",
+                marginBottom: 14,
+              }}
+            >
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: THEME.textMuted, marginBottom: 3 }}>
+                    Person in Charge (PIC)
+                  </label>
+                  <input
+                    type="text"
+                    value={currentQuote.pic || ""}
+                    onChange={(e) => updateCurrentQuote({ pic: e.target.value })}
+                    placeholder="e.g. Wayman Lead"
+                    style={{
+                      width: "100%",
+                      padding: "6px 10px",
+                      borderRadius: 8,
+                      border: `1px solid ${THEME.border}`,
+                      fontSize: 12.5,
+                      fontWeight: 600,
+                      background: "#FFFFFF",
+                      color: "#132422",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: THEME.textMuted, marginBottom: 3 }}>
+                    Agent / Channel
+                  </label>
+                  <input
+                    type="text"
+                    value={currentQuote.agent || ""}
+                    onChange={(e) => updateCurrentQuote({ agent: e.target.value })}
+                    placeholder="e.g. Freelance Partner / B2B"
+                    style={{
+                      width: "100%",
+                      padding: "6px 10px",
+                      borderRadius: 8,
+                      border: `1px solid ${THEME.border}`,
+                      fontSize: 12.5,
+                      fontWeight: 600,
+                      background: "#FFFFFF",
+                      color: "#132422",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: THEME.textMuted, marginBottom: 3 }}>
+                    Tour Activity Date
+                  </label>
+                  <input
+                    type="date"
+                    value={currentQuote.activityDate || ""}
+                    onChange={(e) => updateCurrentQuote({ activityDate: e.target.value })}
+                    style={{
+                      width: "100%",
+                      padding: "6px 10px",
+                      borderRadius: 8,
+                      border: `1px solid ${THEME.border}`,
+                      fontSize: 12.5,
+                      fontWeight: 600,
+                      background: "#FFFFFF",
+                      color: "#132422",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: THEME.textMuted, marginBottom: 3 }}>
+                    Quote Booking Status
+                  </label>
+                  <select
+                    value={currentQuote.status || "Draft"}
+                    onChange={(e) => updateCurrentQuote({ status: e.target.value })}
+                    style={{
+                      width: "100%",
+                      padding: "6px 10px",
+                      borderRadius: 8,
+                      border: `1px solid ${THEME.border}`,
+                      fontSize: 12.5,
+                      fontWeight: 700,
+                      background: "#FFFFFF",
+                      color: currentQuote.status === "Confirmed" ? "#1B5E20" : "#132422",
+                      boxSizing: "border-box",
+                    }}
+                  >
+                    <option value="Draft">Draft</option>
+                    <option value="Sent">Sent</option>
+                    <option value="Confirmed">Confirmed</option>
+                    <option value="Cancelled">Cancelled</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Days Tabs Builder */}
+            <div style={{ background: COLORS.oceanLight, borderRadius: 14, padding: "10px 12px", marginBottom: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: "#F4EEDD", display: "flex", alignItems: "center", gap: 6 }}>
+                  <CalendarDays size={16} color={COLORS.coralSoft} />
+                  <span>Itinerary Days Builder ({days.length} Day{days.length > 1 ? "s" : ""}):</span>
                 </div>
                 <button
-                  onClick={() => addNewDay()}
+                  onClick={handleAddDay}
                   style={{
+                    padding: "4px 10px",
+                    borderRadius: 6,
+                    background: COLORS.coral,
+                    color: "#FFF",
+                    border: "none",
+                    fontSize: 11.5,
+                    fontWeight: 700,
+                    cursor: "pointer",
                     display: "flex",
                     alignItems: "center",
                     gap: 4,
-                    background: COLORS.sand,
-                    color: COLORS.ink,
-                    border: "none",
-                    borderRadius: 8,
-                    padding: "5px 10px",
-                    fontSize: 12,
-                    fontWeight: 700,
-                    cursor: "pointer",
                   }}
                 >
                   <Plus size={13} /> Add Day
                 </button>
               </div>
 
-              <div style={{ display: "flex", gap: 8, overflowX: "auto" }} className="no-scrollbar">
-                {days.map((day, idx) => (
+              <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4 }}>
+                {days.map((d, idx) => (
                   <div
-                    key={day.id}
+                    key={d.id}
                     onClick={() => setActiveDayIndex(idx)}
                     style={{
-                      flexShrink: 0,
+                      padding: "6px 12px",
+                      borderRadius: 8,
+                      background: idx === activeDayIndex ? "#F4EEDD" : COLORS.ocean,
+                      color: idx === activeDayIndex ? COLORS.ink : "#F4EEDD",
+                      fontWeight: 700,
+                      fontSize: 12,
+                      cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
                       gap: 6,
-                      padding: "8px 12px",
-                      borderRadius: 10,
-                      cursor: "pointer",
-                      background: activeDayIndex === idx ? COLORS.coral : COLORS.ocean,
-                      color: activeDayIndex === idx ? COLORS.sand : COLORS.muted,
-                      fontWeight: 600,
-                      fontSize: 13,
-                      border: `1px solid ${activeDayIndex === idx ? COLORS.coral : COLORS.oceanLight}`,
+                      whiteSpace: "nowrap",
                     }}
                   >
-                    <span>{day.title}</span>
+                    <span>{d.title}</span>
                     {days.length > 1 && (
                       <X
-                        size={13}
-                        onClick={(e) => removeDay(idx, e)}
-                        style={{ opacity: 0.7, cursor: "pointer" }}
+                        size={12}
+                        color={idx === activeDayIndex ? COLORS.coral : "#F4EEDD"}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveDay(idx);
+                        }}
                       />
                     )}
                   </div>
                 ))}
               </div>
+
+              <div style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center" }}>
+                <input
+                  type="text"
+                  value={activeDay.title}
+                  onChange={(e) => handleUpdateDayTitle(e.target.value)}
+                  placeholder="Rename Active Day Title (e.g. Day 1 - West Nusa Penida)"
+                  style={{
+                    flex: 1,
+                    padding: "6px 10px",
+                    borderRadius: 6,
+                    border: `1px solid ${COLORS.line}`,
+                    fontSize: 12,
+                    background: "#FFF",
+                    color: COLORS.ink,
+                    fontWeight: 600,
+                  }}
+                />
+              </div>
             </div>
 
             {/* Package Shortcuts Bar */}
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-                <Sparkles size={13} color={COLORS.coralSoft} />
-                <span style={{ fontSize: 12, color: COLORS.muted, fontWeight: 600 }}>
-                  Package Shortcuts for {activeDay.title}:
-                </span>
+            <div style={{ background: COLORS.oceanLight, borderRadius: 14, padding: "10px 14px", marginBottom: 14 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#F4EEDD", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                <Sparkles size={14} color="#FFD166" />
+                <span>Quick Package Shortcuts (1-Click Fill {activeDay.title}):</span>
               </div>
-              <div style={{ display: "flex", gap: 8, overflowX: "auto" }} className="no-scrollbar">
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {presets.map((p) => (
                   <button
                     key={p.id}
-                    onClick={() => applyPresetToDay(activeDayIndex, p)}
+                    onClick={() => applyPresetShortcut(p)}
                     style={{
-                      flexShrink: 0,
-                      padding: "7px 12px",
-                      borderRadius: 10,
+                      padding: "6px 12px",
+                      borderRadius: 8,
                       border: "none",
-                      background: COLORS.sand,
-                      color: COLORS.ink,
-                      fontSize: 12,
+                      background: COLORS.coral,
+                      color: "#FFF",
                       fontWeight: 700,
+                      fontSize: 12,
                       cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
                     }}
                   >
                     + {p.label}
@@ -2074,57 +2478,58 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
               </div>
             </div>
 
-            {/* Summary Pricing Card */}
+            {/* Guest Pax & Pricing Summary Card */}
             <div
               style={{
-                background: COLORS.sand,
+                background: THEME.cardBg,
                 borderRadius: 18,
                 padding: "18px",
-                boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
+                border: `1px solid ${THEME.border}`,
+                boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
                 marginBottom: 18,
               }}
             >
               {/* Pax Stepper */}
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
-                <Users size={16} color={COLORS.ink} />
+              <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 14, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, color: THEME.textMain, fontWeight: 700, fontSize: 13 }}>
+                  <Users size={16} color={COLORS.coral} />
+                  <span>Guests:</span>
+                </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 12.5, color: COLORS.muted, fontWeight: 600 }}>Adults</span>
-                  <button className="stepper-btn" onClick={() => setAdults((a) => Math.max(1, a - 1))} style={stepBtn(COLORS.deep, COLORS.sand)}>
+                  <span style={{ fontSize: 12.5, color: THEME.textMuted, fontWeight: 700 }}>Adults</span>
+                  <button onClick={() => setAdults((a) => Math.max(1, a - 1))} style={stepBtn(COLORS.deep, "#F4EEDD")}>
                     <Minus size={12} />
                   </button>
-                  <span style={{ minWidth: 18, textAlign: "center", fontWeight: 700, color: COLORS.ink }}>{adults}</span>
-                  <button className="stepper-btn" onClick={() => setAdults((a) => a + 1)} style={stepBtn(COLORS.coral, COLORS.sand)}>
+                  <span style={{ minWidth: 18, textAlign: "center", fontWeight: 700, color: THEME.textMain }}>{adults}</span>
+                  <button onClick={() => setAdults((a) => a + 1)} style={stepBtn(COLORS.coral, "#F4EEDD")}>
                     <Plus size={12} />
                   </button>
                 </div>
+
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 12.5, color: COLORS.muted, fontWeight: 600 }}>Kids</span>
-                  <button className="stepper-btn" onClick={() => setKids((k) => Math.max(0, k - 1))} style={stepBtn(COLORS.deep, COLORS.sand)}>
+                  <span style={{ fontSize: 12.5, color: THEME.textMuted, fontWeight: 700 }}>Kids</span>
+                  <button onClick={() => setKids((k) => Math.max(0, k - 1))} style={stepBtn(COLORS.deep, "#F4EEDD")}>
                     <Minus size={12} />
                   </button>
-                  <span style={{ minWidth: 18, textAlign: "center", fontWeight: 700, color: COLORS.ink }}>{kids}</span>
-                  <button className="stepper-btn" onClick={() => setKids((k) => k + 1)} style={stepBtn(COLORS.coral, COLORS.sand)}>
+                  <span style={{ minWidth: 18, textAlign: "center", fontWeight: 700, color: THEME.textMain }}>{kids}</span>
+                  <button onClick={() => setKids((k) => k + 1)} style={stepBtn(COLORS.coral, "#F4EEDD")}>
                     <Plus size={12} />
                   </button>
                 </div>
+
                 {kids > 0 && (
                   <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    <span style={{ fontSize: 12, color: COLORS.muted, fontWeight: 600 }}>Child Rate:</span>
-                    <input
-                      type="number"
+                    <span style={{ fontSize: 11.5, color: THEME.textMuted, fontWeight: 700 }}>Child Rate:</span>
+                    <select
                       value={kidsRate}
-                      onChange={(e) => setKidsRate(Math.max(0, Math.min(100, Number(e.target.value))))}
-                      style={{
-                        width: 44,
-                        padding: "3px 4px",
-                        borderRadius: 6,
-                        border: `1px solid ${COLORS.line}`,
-                        fontSize: 12,
-                        textAlign: "center",
-                        fontWeight: 600,
-                      }}
-                    />
-                    <span style={{ fontSize: 12, color: COLORS.muted }}>%</span>
+                      onChange={(e) => setKidsRate(Number(e.target.value))}
+                      style={{ padding: "2px 6px", borderRadius: 6, border: `1px solid ${THEME.border}`, fontSize: 11.5, fontWeight: 700, background: "#FFF", color: COLORS.ink }}
+                    >
+                      <option value={50}>50%</option>
+                      <option value={65}>65%</option>
+                      <option value={75}>75%</option>
+                      <option value={100}>100%</option>
+                    </select>
                   </div>
                 )}
               </div>
@@ -2132,42 +2537,24 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
               {/* Sell Price Display Header */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 12, flexWrap: "wrap", gap: 10 }}>
                 <div>
-                  <div style={{ fontSize: 11, color: COLORS.muted, fontWeight: 600, textTransform: "uppercase" }}>
+                  <div style={{ fontSize: 11, color: THEME.textMuted, fontWeight: 700, textTransform: "uppercase" }}>
                     Total Sell Price ({days.length} Day{days.length > 1 ? "s" : ""})
                   </div>
-                  <div style={{ fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 32, color: COLORS.ink, lineHeight: 1.1 }}>
+                  <div style={{ fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 32, color: THEME.textMain, lineHeight: 1.1 }}>
                     {idr(totals.price)}
                   </div>
                 </div>
-                <button
-                  onClick={resetAll}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 5,
-                    background: "none",
-                    border: `1px solid ${COLORS.line}`,
-                    borderRadius: 10,
-                    padding: "6px 10px",
-                    color: COLORS.muted,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                >
-                  <RotateCcw size={13} /> Reset
-                </button>
               </div>
 
               {/* Per Pax Breakdown Cards */}
               <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
-                <div style={{ flex: 1, background: COLORS.sandDeep, padding: "8px 12px", borderRadius: 10 }}>
-                  <div style={{ fontSize: 11, color: COLORS.muted, fontWeight: 600 }}>Adult Price / pax</div>
-                  <div style={{ fontWeight: 700, fontSize: 16, color: COLORS.ink }}>{idr(totals.adultPricePax)}</div>
+                <div style={{ flex: 1, background: THEME.cardDeepBg, padding: "10px 12px", borderRadius: 10, border: `1px solid ${THEME.border}` }}>
+                  <div style={{ fontSize: 11, color: THEME.textMuted, fontWeight: 700 }}>Adult Price / pax</div>
+                  <div style={{ fontWeight: 700, fontSize: 16, color: THEME.textMain }}>{idr(totals.adultPricePax)}</div>
                 </div>
                 {kids > 0 && (
-                  <div style={{ flex: 1, background: COLORS.sandDeep, padding: "8px 12px", borderRadius: 10 }}>
-                    <div style={{ fontSize: 11, color: COLORS.muted, fontWeight: 600 }}>Child Price / pax ({kidsRate}%)</div>
+                  <div style={{ flex: 1, background: THEME.cardDeepBg, padding: "10px 12px", borderRadius: 10, border: `1px solid ${THEME.border}` }}>
+                    <div style={{ fontSize: 11, color: THEME.textMuted, fontWeight: 700 }}>Child Price / pax ({kidsRate}%)</div>
                     <div style={{ fontWeight: 700, fontSize: 16, color: COLORS.coral }}>{idr(totals.childPricePax)}</div>
                   </div>
                 )}
@@ -2175,9 +2562,9 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
 
               {/* Cost & Profit Margin Bar */}
               {canSeeCosts ? (
-                <div style={{ borderTop: `1px solid ${COLORS.line}`, paddingTop: 12, paddingBottom: 12 }}>
+                <div style={{ borderTop: `1px solid ${THEME.border}`, paddingTop: 12, paddingBottom: 6 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                    <label style={{ fontSize: 12.5, fontWeight: 600, color: COLORS.ink, display: "flex", alignItems: "center", gap: 6 }}>
+                    <label style={{ fontSize: 12.5, fontWeight: 700, color: THEME.textMain, display: "flex", alignItems: "center", gap: 6 }}>
                       <span>Profit Margin Target</span>
                       {!isGodUser && userMinMargin > 0 && (
                         <span style={{ fontSize: 11, color: COLORS.coral, fontWeight: 700 }}>(Min {userMinMargin}% enforced)</span>
@@ -2193,122 +2580,296 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
                     onChange={(e) => setMargin(Number(e.target.value))}
                     style={{ width: "100%", display: "block" }}
                   />
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: COLORS.ink, marginTop: 8 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700, color: THEME.textMain, marginTop: 8 }}>
                     <span>Vendor Cost: {idr(totals.cost)}</span>
-                    <span>Est. Profit: {idr(totals.profit)}</span>
+                    <span style={{ color: COLORS.profit }}>Est. Profit: {idr(totals.profit)}</span>
                   </div>
                 </div>
-              ) : (
-                <div style={{ borderTop: `1px solid ${COLORS.line}`, paddingTop: 8, paddingBottom: 8, fontSize: 11.5, color: COLORS.muted, display: "flex", alignItems: "center", gap: 6 }}>
-                  <Lock size={13} color={COLORS.coral} />
-                  <span>Vendor cost details & profit margin locked by policy.</span>
-                </div>
-              )}
-
-              {/* Selected Items Breakdown Drawer */}
-              <div style={{ borderTop: `1px solid ${COLORS.line}`, paddingTop: 12 }}>
-                <button
-                  onClick={() => setShowBreakdown((b) => !b)}
-                  style={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    background: "none",
-                    border: "none",
-                    color: COLORS.ink,
-                    fontWeight: 700,
-                    fontSize: 13,
-                    cursor: "pointer",
-                    padding: "4px 0",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <List size={15} color={COLORS.coral} />
-                    <span>Selected Tour Items ({totals.lineCount} items)</span>
-                  </div>
-                  <ChevronDown
-                    size={16}
-                    style={{
-                      transform: showBreakdown ? "rotate(180deg)" : "none",
-                      transition: "transform 0.2s",
-                    }}
-                  />
-                </button>
-
-                {showBreakdown && (
-                  <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 10 }}>
-                    {totals.dayBreakdowns.map(({ day, dayCost, selectedItems }, dIdx) => (
-                      <div key={day.id} style={{ background: COLORS.sandDeep, borderRadius: 12, padding: 10 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: 12.5, color: COLORS.ink, marginBottom: 6 }}>
-                          <span>{day.title} Items:</span>
-                          {canSeeCosts && <span>Subtotal: {idr(dayCost)}</span>}
-                        </div>
-                        {selectedItems.length === 0 ? (
-                          <div style={{ fontSize: 11.5, color: COLORS.muted }}>No items selected for this day. Click items below to add.</div>
-                        ) : (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                            {selectedItems.map((itemObj, i) => (
-                              <div
-                                key={i}
-                                style={{
-                                  display: "flex",
-                                  justifyContent: "space-between",
-                                  alignItems: "center",
-                                  fontSize: 12,
-                                  background: COLORS.sand,
-                                  padding: "6px 10px",
-                                  borderRadius: 8,
-                                }}
-                              >
-                                <div>
-                                  <span style={{ fontWeight: 600, color: COLORS.ink }}>{itemObj.item.name}</span>
-                                  {canSeeCosts && (
-                                    <span style={{ color: COLORS.muted, fontSize: 11, marginLeft: 6 }}>({itemObj.caption})</span>
-                                  )}
-                                </div>
-                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                  {canSeeCosts && <span style={{ fontWeight: 700, color: COLORS.ink }}>{idr(itemObj.cost)}</span>}
-                                  <button
-                                    onClick={() => removeItemFromDay(dIdx, itemObj)}
-                                    title="Remove item"
-                                    style={{
-                                      background: "none",
-                                      border: "none",
-                                      color: COLORS.coral,
-                                      cursor: "pointer",
-                                      padding: 0,
-                                      display: "flex",
-                                    }}
-                                  >
-                                    <X size={14} />
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              ) : null}
             </div>
 
-            {/* Catalog Item Search Input */}
+            {/* Custom Extra Item Builder */}
+            <div style={{ background: THEME.cardBg, borderRadius: 14, padding: 12, marginBottom: 14, border: `1px solid ${THEME.border}` }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: THEME.textMain, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                <Plus size={14} color={COLORS.coral} />
+                <span>Add Ad-Hoc Extra Expense to {activeDay.title}:</span>
+              </div>
+              <form onSubmit={handleAddCustomItem} style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <input
+                  type="text"
+                  placeholder="Custom Item (e.g. Special Tip, Private Speedboat)"
+                  value={customItemForm.name}
+                  onChange={(e) => setCustomItemForm({ ...customItemForm, name: e.target.value })}
+                  style={{ flex: 2, minWidth: 140, padding: "6px 8px", borderRadius: 6, border: `1px solid ${THEME.border}`, fontSize: 12, background: "#FFF", color: "#132422" }}
+                />
+                <input
+                  type="number"
+                  placeholder="Cost (IDR)"
+                  value={customItemForm.price}
+                  onChange={(e) => setCustomItemForm({ ...customItemForm, price: e.target.value })}
+                  style={{ flex: 1, minWidth: 90, padding: "6px 8px", borderRadius: 6, border: `1px solid ${THEME.border}`, fontSize: 12, background: "#FFF", color: "#132422" }}
+                />
+                <select
+                  value={customItemForm.mode}
+                  onChange={(e) => setCustomItemForm({ ...customItemForm, mode: e.target.value })}
+                  style={{ padding: "6px 8px", borderRadius: 6, border: `1px solid ${THEME.border}`, fontSize: 12, background: "#FFF", color: "#132422" }}
+                >
+                  <option value="flat">Flat Price</option>
+                  <option value="pax">Per Pax</option>
+                </select>
+                <button type="submit" style={{ padding: "6px 12px", borderRadius: 6, background: COLORS.profit, color: "#FFF", border: "none", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                  + Extra
+                </button>
+              </form>
+
+              {/* Render custom extra items */}
+              {(activeDay.custom || []).length > 0 && (
+                <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
+                  {activeDay.custom.map((c) => (
+                    <div key={c.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: THEME.cardDeepBg, padding: "4px 8px", borderRadius: 6, fontSize: 12 }}>
+                      <span>✨ {c.name} ({idr(c.price)})</span>
+                      <button onClick={() => handleRemoveCustomItem(c.id)} style={{ background: "none", border: "none", color: COLORS.coral, cursor: "pointer" }}>
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Itemized Vendor Pricing & Package Recap Breakdown */}
+            <div
+              style={{
+                background: THEME.cardBg,
+                borderRadius: 16,
+                padding: 16,
+                border: `1px solid ${THEME.border}`,
+                boxShadow: "0 6px 18px rgba(0,0,0,0.08)",
+                marginBottom: 14,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 12,
+                  borderBottom: `1px solid ${THEME.border}`,
+                  paddingBottom: 8,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <FileSpreadsheet size={18} color={COLORS.coral} />
+                  <h3
+                    style={{
+                      margin: 0,
+                      fontFamily: "'Fraunces', serif",
+                      fontSize: 16,
+                      color: THEME.textMain,
+                    }}
+                  >
+                    Itemized Vendor Costing & Package Recap
+                  </h3>
+                </div>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    background: COLORS.oceanLight,
+                    color: "#F4EEDD",
+                    padding: "3px 8px",
+                    borderRadius: 6,
+                  }}
+                >
+                  {totals.lineCount} Selected Item{totals.lineCount !== 1 ? "s" : ""}
+                </span>
+              </div>
+
+              {totals.lineCount === 0 ? (
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: "16px 10px",
+                    color: THEME.textMuted,
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                  }}
+                >
+                  No items added to this itinerary yet. Select from Quick Package Shortcuts above or browse the catalog below.
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {totals.dayBreakdowns.map(({ day, dayCost, selectedItems }, dIdx) => (
+                    <div
+                      key={day.id || dIdx}
+                      style={{
+                        background: THEME.cardDeepBg,
+                        borderRadius: 12,
+                        padding: 12,
+                        border: `1px solid ${THEME.border}`,
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          marginBottom: 8,
+                          fontSize: 13,
+                          fontWeight: 700,
+                          color: THEME.textMain,
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <Calendar size={14} color={COLORS.coral} />
+                          <span>{day.title}</span>
+                        </div>
+                        {canSeeCosts && (
+                          <span style={{ fontSize: 12, color: COLORS.profit, fontWeight: 700 }}>
+                            Day Net Cost: {idr(dayCost)}
+                          </span>
+                        )}
+                      </div>
+
+                      {selectedItems.length === 0 ? (
+                        <div style={{ fontSize: 11.5, color: THEME.textMuted, fontStyle: "italic", paddingLeft: 12 }}>
+                          No items selected for this day.
+                        </div>
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          {selectedItems.map(({ item, cat, cfg, cost, caption }, iIdx) => (
+                            <div
+                              key={`${item.id}-${iIdx}`}
+                              style={{
+                                background: THEME.cardBg,
+                                borderRadius: 8,
+                                padding: "7px 10px",
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                fontSize: 12,
+                                border: `1px solid ${THEME.border}`,
+                              }}
+                            >
+                              <div>
+                                <div style={{ fontWeight: 700, color: THEME.textMain, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                                  <span>{item.name}</span>
+                                  <span
+                                    style={{
+                                      fontSize: 10,
+                                      padding: "1px 5px",
+                                      borderRadius: 4,
+                                      background: COLORS.oceanLight,
+                                      color: "#F4EEDD",
+                                      fontWeight: 600,
+                                    }}
+                                  >
+                                    {cat.title}
+                                  </span>
+                                  {cfg.override ? (
+                                    <span style={{ fontSize: 10, color: COLORS.coral, fontWeight: 700, background: "#FFEBEE", padding: "1px 4px", borderRadius: 4 }}>
+                                      Overridden
+                                    </span>
+                                  ) : null}
+                                </div>
+                                {canSeeCosts && (
+                                  <div style={{ fontSize: 11, color: THEME.textMuted, marginTop: 2 }}>
+                                    {caption}
+                                  </div>
+                                )}
+                              </div>
+
+                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                {canSeeCosts ? (
+                                  <div style={{ textAlign: "right", fontWeight: 700, color: THEME.textMain, fontSize: 12.5 }}>
+                                    {idr(cost)}
+                                  </div>
+                                ) : (
+                                  <div style={{ fontSize: 11, color: COLORS.profit, fontWeight: 700 }}>
+                                    Included ✓
+                                  </div>
+                                )}
+                                <button
+                                  onClick={() => handleRemoveItemFromDay(day.id, item.id, cat.id, item.name, cfg.mode)}
+                                  title={`Remove ${item.name}`}
+                                  style={{
+                                    background: "none",
+                                    border: "none",
+                                    color: COLORS.coral,
+                                    cursor: "pointer",
+                                    padding: "2px 4px",
+                                    borderRadius: 4,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                  }}
+                                >
+                                  <X size={15} />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {/* Recap Summary Totals Box */}
+                  {canSeeCosts && (
+                    <div
+                      style={{
+                        background: COLORS.ocean,
+                        borderRadius: 12,
+                        padding: 12,
+                        color: "#F4EEDD",
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
+                        gap: 10,
+                        marginTop: 4,
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: 10.5, color: "#A3C2BD", fontWeight: 700, textTransform: "uppercase" }}>
+                          Total Net Cost
+                        </div>
+                        <div style={{ fontSize: 15, fontWeight: 700 }}>{idr(totals.cost)}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 10.5, color: "#A3C2BD", fontWeight: 700, textTransform: "uppercase" }}>
+                          Margin ({margin}%)
+                        </div>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.coralSoft }}>
+                          + {idr(totals.profit)}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 10.5, color: "#A3C2BD", fontWeight: 700, textTransform: "uppercase" }}>
+                          Final Sell Price
+                        </div>
+                        <div style={{ fontSize: 16, fontWeight: 700, color: "#FFD166" }}>
+                          {idr(totals.price)}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Search Input */}
             <div style={{ position: "relative", marginBottom: 12 }}>
-              <Search size={15} color={COLORS.muted} style={{ position: "absolute", left: 12, top: 11 }} />
+              <Search size={15} color="#A3C2BD" style={{ position: "absolute", left: 12, top: 11 }} />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder={`Search items to add to ${activeDay.title}…`}
+                placeholder={`Search vendor items to add to ${activeDay.title}…`}
                 style={{
                   width: "100%",
                   padding: "10px 12px 10px 34px",
                   borderRadius: 12,
                   border: `1px solid ${COLORS.oceanLight}`,
                   background: COLORS.ocean,
-                  color: COLORS.sand,
+                  color: "#F4EEDD",
                   fontSize: 13.5,
                   outline: "none",
                   boxSizing: "border-box",
@@ -2316,16 +2877,13 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
               />
             </div>
 
-            {/* Catalog Accordions */}
+            {/* Vendor Items Accordion Catalog */}
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {filteredCatalog.map((cat) => {
-                const selectedInCat = cat.items.filter((i) =>
-                  isSelected(getConfig(i.id, cat.id, i.name))
-                );
                 const isOpen = open[cat.id] || query.trim().length > 0;
 
                 return (
-                  <div key={cat.id} style={{ background: COLORS.oceanLight, borderRadius: 14, overflow: "hidden" }}>
+                  <div key={cat.id} style={{ background: COLORS.oceanLight, borderRadius: 14, overflow: "hidden", border: `1px solid ${COLORS.line}` }}>
                     <button
                       onClick={() => setOpen((o) => ({ ...o, [cat.id]: !o[cat.id] }))}
                       style={{
@@ -2340,40 +2898,48 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
                       }}
                     >
                       <div style={{ textAlign: "left" }}>
-                        <div style={{ color: COLORS.sand, fontWeight: 600, fontSize: 14 }}>{cat.title}</div>
-                        {selectedInCat.length > 0 && (
-                          <div style={{ color: COLORS.coralSoft, fontSize: 11.5, marginTop: 1 }}>
-                            {selectedInCat.length} selected for {activeDay.title}
-                          </div>
-                        )}
+                        <div style={{ color: "#F4EEDD", fontWeight: 700, fontSize: 14 }}>{cat.title}</div>
                       </div>
                       <ChevronDown
                         size={17}
-                        color={COLORS.sand}
+                        color="#F4EEDD"
                         style={{ transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}
                       />
                     </button>
 
                     {isOpen && (
-                      <div style={{ background: COLORS.sand }}>
+                      <div style={{ background: THEME.cardBg }}>
                         {cat.items.map((item) => {
                           const cfg = getConfig(item.id, cat.id, item.name);
                           const selected = isSelected(cfg);
 
                           return (
-                            <div key={item.id} style={{ borderTop: `1px solid ${COLORS.line}`, padding: "10px 15px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <div key={item.id} style={{ borderTop: `1px solid ${THEME.border}`, padding: "10px 15px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                               <div>
-                                <div style={{ fontSize: 13, color: COLORS.ink, fontWeight: 500 }}>{item.name}</div>
-                                {canSeeCosts && <div style={{ fontSize: 11.5, color: COLORS.muted }}>{ruleCaption(item, cfg, totalPax)}</div>}
+                                <div style={{ fontSize: 13, color: THEME.textMain, fontWeight: 600 }}>{item.name}</div>
+                                {canSeeCosts && <div style={{ fontSize: 11.5, color: THEME.textMuted, fontWeight: 600 }}>{ruleCaption(item, cfg, totalPax)}</div>}
+                                
+                                {effectiveUser?.canOverrideCosts && selected && (
+                                  <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 4 }}>
+                                    <span style={{ fontSize: 10.5, color: COLORS.coral, fontWeight: 700 }}>Custom Cost Override:</span>
+                                    <input
+                                      type="number"
+                                      placeholder={item.price}
+                                      value={cfg.override || ""}
+                                      onChange={(e) => updateActiveDayConfig(item.id, cat.id, item.name, { override: e.target.value })}
+                                      style={{ width: 80, padding: "2px 4px", fontSize: 11, borderRadius: 4, border: `1px solid ${THEME.border}`, background: "#FFF", color: COLORS.ink }}
+                                    />
+                                  </div>
+                                )}
                               </div>
                               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                                 {cfg.mode === "flat" ? (
                                   <>
-                                    <button onClick={() => setItemQty(item.id, cat.id, item.name, (cfg.qty || 0) - 1)} style={stepBtn(COLORS.deep, COLORS.sand)}>
+                                    <button onClick={() => setItemQty(item.id, cat.id, item.name, (cfg.qty || 0) - 1)} style={stepBtn(COLORS.deep, "#F4EEDD")}>
                                       <Minus size={12} />
                                     </button>
-                                    <span style={{ minWidth: 16, textAlign: "center", fontSize: 13, fontWeight: 600, color: COLORS.ink }}>{cfg.qty || 0}</span>
-                                    <button onClick={() => setItemQty(item.id, cat.id, item.name, (cfg.qty || 0) + 1)} style={stepBtn(COLORS.coral, COLORS.sand)}>
+                                    <span style={{ minWidth: 16, textAlign: "center", fontSize: 13, fontWeight: 700, color: THEME.textMain }}>{cfg.qty || 0}</span>
+                                    <button onClick={() => setItemQty(item.id, cat.id, item.name, (cfg.qty || 0) + 1)} style={stepBtn(COLORS.coral, "#F4EEDD")}>
                                       <Plus size={12} />
                                     </button>
                                   </>
@@ -2392,360 +2958,76 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
                 );
               })}
             </div>
-
-            {/* AI Proposal & Itinerary Generator */}
-            <div style={{ background: COLORS.oceanLight, borderRadius: 18, padding: 16, marginTop: 18 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, color: COLORS.sand, fontWeight: 700, fontSize: 14 }}>
-                  <Bot size={18} color={COLORS.coralSoft} />
-                  <span>AI Proposal & Itinerary Assistant</span>
-                </div>
-
-                <div style={{ display: "flex", gap: 6 }}>
-                  <button
-                    onClick={() => setShowPromptCustomizer(!showPromptCustomizer)}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4,
-                      background: COLORS.ocean,
-                      color: COLORS.sand,
-                      border: `1px solid ${COLORS.coralSoft}`,
-                      borderRadius: 8,
-                      padding: "5px 10px",
-                      fontSize: 11.5,
-                      fontWeight: 600,
-                      cursor: "pointer",
-                    }}
-                  >
-                    <SlidersHorizontal size={13} /> {showPromptCustomizer ? "Hide Settings" : "AI Prompt Style"}
-                  </button>
-
-                  <button
-                    onClick={generateGeminiContent}
-                    disabled={aiLoading}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4,
-                      background: COLORS.coral,
-                      color: COLORS.sand,
-                      border: "none",
-                      borderRadius: 8,
-                      padding: "6px 12px",
-                      fontSize: 12,
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      opacity: aiLoading ? 0.6 : 1,
-                    }}
-                  >
-                    <Sparkles size={14} /> {aiLoading ? "Generating AI..." : "Generate AI Content"}
-                  </button>
-                </div>
-              </div>
-
-              {/* Prompt Settings Panel */}
-              {showPromptCustomizer && (
-                <div style={{ background: COLORS.ocean, borderRadius: 12, padding: 12, marginBottom: 12, border: `1px solid ${COLORS.coralSoft}` }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.sand, marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <Pencil size={13} color={COLORS.coral} />
-                      <span>Customize Gemini AI Persona & Output Styling</span>
-                    </div>
-                    {isGodUser ? (
-                      <span style={{ fontSize: 10.5, color: COLORS.sand, background: COLORS.coral, padding: "2px 6px", borderRadius: 4, fontWeight: 700 }}>
-                        ⚡ GOD Master AI Privileges Active
-                      </span>
-                    ) : (
-                      <span style={{ fontSize: 10.5, color: COLORS.coralSoft }}>
-                        (Using Master Defaults)
-                      </span>
-                    )}
-                  </div>
-
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10, marginBottom: 8 }}>
-                    <div>
-                      <label style={{ display: "block", fontSize: 11, color: COLORS.muted, fontWeight: 600, marginBottom: 2 }}>Tone / Sales Persona</label>
-                      <select
-                        value={promptSettings.tone}
-                        onChange={(e) => setPromptSettings({ ...promptSettings, tone: e.target.value })}
-                        style={{ width: "100%", padding: "5px 8px", borderRadius: 6, border: `1px solid ${COLORS.line}`, fontSize: 11.5, background: "#FFF", fontWeight: 600 }}
-                      >
-                        <option value="Warm & High-Converting Travel Advisor">Warm & High-Converting Travel Advisor ⭐</option>
-                        <option value="VIP Luxury Concierge">VIP Luxury Concierge 💎</option>
-                        <option value="Short & Punchy WhatsApp Closer">Short & Punchy WhatsApp Closer ⚡</option>
-                        <option value="Casual & Friendly Island Local Guide">Casual & Friendly Local Guide 🌴</option>
-                        <option value="Ultra Professional & Detailed Agency">Ultra Professional & Detailed Agency 🏢</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label style={{ display: "block", fontSize: 11, color: COLORS.muted, fontWeight: 600, marginBottom: 2 }}>Output Language</label>
-                      <select
-                        value={promptSettings.language}
-                        onChange={(e) => setPromptSettings({ ...promptSettings, language: e.target.value })}
-                        style={{ width: "100%", padding: "5px 8px", borderRadius: 6, border: `1px solid ${COLORS.line}`, fontSize: 11.5, background: "#FFF", fontWeight: 600 }}
-                      >
-                        <option value="English">English</option>
-                        <option value="Bahasa Indonesia">Bahasa Indonesia</option>
-                        <option value="Bilingual (English + Indonesian)">Bilingual (English & Indonesian)</option>
-                        <option value="Mandarin Chinese">Mandarin Chinese (中文)</option>
-                        <option value="French">French (Français)</option>
-                        <option value="German">German (Deutsch)</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div style={{ marginBottom: 8 }}>
-                    <label style={{ display: "block", fontSize: 11, color: COLORS.muted, fontWeight: 600, marginBottom: 2 }}>
-                      Custom Tour Highlight Instructions
-                    </label>
-                    <input
-                      type="text"
-                      value={promptSettings.customInstructions}
-                      onChange={(e) => setPromptSettings({ ...promptSettings, customInstructions: e.target.value })}
-                      placeholder="e.g. Highlight photo spots at Treehouse, fast boat departure times..."
-                      style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: `1px solid ${COLORS.line}`, fontSize: 11.5, boxSizing: "border-box" }}
-                    />
-                  </div>
-
-                  {isGodUser && (
-                    <div style={{ borderTop: `1px dashed ${COLORS.coralSoft}`, paddingTop: 8, marginTop: 6 }}>
-                      <label style={{ display: "block", fontSize: 11, color: COLORS.coralSoft, fontWeight: 700, marginBottom: 2 }}>
-                        ⚡ GOD Master AI System Prompt Template
-                      </label>
-                      <textarea
-                        value={promptSettings.systemPromptTemplate || ""}
-                        onChange={(e) => setPromptSettings({ ...promptSettings, systemPromptTemplate: e.target.value })}
-                        rows={2}
-                        placeholder="Master system prompt instructions for Gemini AI..."
-                        style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: `1px solid ${COLORS.line}`, fontSize: 11, boxSizing: "border-box", background: "#FFF8F5", color: COLORS.ink }}
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Proposal Navigation Tabs */}
-              <div style={{ display: "flex", gap: 6, background: COLORS.ocean, padding: 4, borderRadius: 10, marginBottom: 10 }}>
-                <button
-                  onClick={() => setAiTab("quote")}
-                  style={{
-                    flex: 1,
-                    padding: "6px 8px",
-                    borderRadius: 8,
-                    border: "none",
-                    background: aiTab === "quote" ? COLORS.sand : "transparent",
-                    color: aiTab === "quote" ? COLORS.ink : COLORS.sand,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 4,
-                  }}
-                >
-                  <FileText size={13} /> WhatsApp Text
-                </button>
-                <button
-                  onClick={() => setAiTab("itinerary")}
-                  style={{
-                    flex: 1,
-                    padding: "6px 8px",
-                    borderRadius: 8,
-                    border: "none",
-                    background: aiTab === "itinerary" ? COLORS.sand : "transparent",
-                    color: aiTab === "itinerary" ? COLORS.ink : COLORS.sand,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 4,
-                  }}
-                >
-                  <Clock size={13} /> Detailed Itinerary
-                </button>
-                <button
-                  onClick={() => setAiTab("pitch")}
-                  style={{
-                    flex: 1,
-                    padding: "6px 8px",
-                    borderRadius: 8,
-                    border: "none",
-                    background: aiTab === "pitch" ? COLORS.sand : "transparent",
-                    color: aiTab === "pitch" ? COLORS.ink : COLORS.sand,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 4,
-                  }}
-                >
-                  <MessageSquare size={13} /> Sales Pitch
-                </button>
-              </div>
-
-              {aiTab === "quote" && (
-                <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <span style={{ fontSize: 11.5, color: COLORS.sand, fontWeight: 600 }}>WhatsApp Quotation Summary (Editable)</span>
-                    <button
-                      onClick={() => copyTextToClipboard(displayQuotationText)}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 4,
-                        background: COLORS.coral,
-                        color: COLORS.sand,
-                        border: "none",
-                        borderRadius: 6,
-                        padding: "4px 8px",
-                        fontSize: 11,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                      }}
-                    >
-                      {copied ? <Check size={12} /> : <Copy size={12} />}
-                      {copied ? "Copied!" : "Copy Text"}
-                    </button>
-                  </div>
-                  <textarea
-                    value={displayQuotationText}
-                    onChange={(e) => updateCurrentQuote({ customQuoteText: e.target.value })}
-                    rows={10}
-                    style={{
-                      width: "100%",
-                      padding: 10,
-                      borderRadius: 10,
-                      border: `1px solid ${COLORS.line}`,
-                      fontSize: 12,
-                      fontFamily: "monospace",
-                      color: COLORS.ink,
-                      background: "#FCFAF3",
-                      resize: "vertical",
-                      boxSizing: "border-box",
-                    }}
-                  />
-                </div>
-              )}
-
-              {aiTab === "itinerary" && (
-                <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <span style={{ fontSize: 11.5, color: COLORS.sand, fontWeight: 600 }}>AI Hour-by-Hour Itinerary (Editable)</span>
-                    {currentQuote.aiItinerary && (
-                      <button
-                        onClick={() => copyTextToClipboard(currentQuote.aiItinerary)}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 4,
-                          background: COLORS.coral,
-                          color: COLORS.sand,
-                          border: "none",
-                          borderRadius: 6,
-                          padding: "4px 8px",
-                          fontSize: 11,
-                          fontWeight: 700,
-                          cursor: "pointer",
-                        }}
-                      >
-                        {copied ? <Check size={12} /> : <Copy size={12} />}
-                        {copied ? "Copied!" : "Copy Itinerary"}
-                      </button>
-                    )}
-                  </div>
-                  <textarea
-                    value={currentQuote.aiItinerary || ""}
-                    onChange={(e) => updateCurrentQuote({ aiItinerary: e.target.value })}
-                    placeholder="Click 'Generate AI Content' above to prompt Gemini for a detailed time schedule..."
-                    rows={12}
-                    style={{
-                      width: "100%",
-                      padding: 10,
-                      borderRadius: 10,
-                      border: `1px solid ${COLORS.line}`,
-                      fontSize: 12,
-                      color: COLORS.ink,
-                      background: "#FCFAF3",
-                      resize: "vertical",
-                      boxSizing: "border-box",
-                    }}
-                  />
-                </div>
-              )}
-
-              {aiTab === "pitch" && (
-                <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <span style={{ fontSize: 11.5, color: COLORS.sand, fontWeight: 600 }}>Sales Pitch (Editable)</span>
-                    {currentQuote.aiPitch && (
-                      <button
-                        onClick={() => copyTextToClipboard(currentQuote.aiPitch)}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 4,
-                          background: COLORS.coral,
-                          color: COLORS.sand,
-                          border: "none",
-                          borderRadius: 6,
-                          padding: "4px 8px",
-                          fontSize: 11,
-                          fontWeight: 700,
-                          cursor: "pointer",
-                        }}
-                      >
-                        {copied ? <Check size={12} /> : <Send size={12} />}
-                        {copied ? "Copied!" : "Copy Pitch"}
-                      </button>
-                    )}
-                  </div>
-                  <textarea
-                    value={currentQuote.aiPitch || ""}
-                    onChange={(e) => updateCurrentQuote({ aiPitch: e.target.value })}
-                    placeholder="Click 'Generate AI Content' to draft a customized sales pitch..."
-                    rows={8}
-                    style={{
-                      width: "100%",
-                      padding: 10,
-                      borderRadius: 10,
-                      border: `1px solid ${COLORS.line}`,
-                      fontSize: 12,
-                      color: COLORS.ink,
-                      background: "#FCFAF3",
-                      resize: "vertical",
-                      boxSizing: "border-box",
-                    }}
-                  />
-                </div>
-              )}
-            </div>
           </div>
         )}
 
-        {}
         {currentPage === "dashboard" && canAccessDashboard && (
           <div>
+            {/* Real-time Activity Audit Card */}
+            {isGodUser && (
+              <div style={{ background: THEME.cardBg, borderRadius: 16, padding: 16, marginBottom: 20, border: `1px solid ${THEME.border}`, boxShadow: "0 6px 18px rgba(0,0,0,0.1)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, color: THEME.textMain, fontWeight: 700, fontSize: 15 }}>
+                    <Activity size={18} color={COLORS.coral} />
+                    <span>Real-Time Team Activity Audit Stream</span>
+                  </div>
+                  <span style={{ fontSize: 11, background: COLORS.profit, color: "#FFF", padding: "2px 8px", borderRadius: 6, fontWeight: 700 }}>
+                    Live Monitor
+                  </span>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 180, overflowY: "auto" }}>
+                  {activityLogs.length === 0 ? (
+                    <div style={{ fontSize: 12, color: THEME.textMuted, fontWeight: 600 }}>No active user simulator logs recorded yet.</div>
+                  ) : (
+                    activityLogs.map((log) => (
+                      <div
+                        key={log.id}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          background: THEME.cardDeepBg,
+                          padding: "6px 10px",
+                          borderRadius: 8,
+                          fontSize: 12,
+                          border: `1px solid ${THEME.border}`,
+                        }}
+                      >
+                        <div>
+                          <strong style={{ color: THEME.textMain }}>{log.userName}</strong> ({log.role}):{" "}
+                          <span style={{ color: THEME.textMain }}>{log.action}</span>
+                          {log.quoteId && (
+                            <span style={{ marginLeft: 6, fontSize: 11, background: THEME.cardBg, padding: "1px 5px", borderRadius: 4, fontFamily: "monospace" }}>
+                              [{log.quoteId}]
+                            </span>
+                          )}
+                        </div>
+                        <span style={{ fontSize: 11, color: THEME.textMuted, fontWeight: 600 }}>
+                          {new Date(log.timestamp).toLocaleTimeString()}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Dashboard Stats */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 20 }}>
-              <div style={{ background: COLORS.sand, borderRadius: 14, padding: 16, boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, color: COLORS.muted, fontSize: 12, fontWeight: 600 }}>
+              <div style={{ background: THEME.cardBg, borderRadius: 14, padding: 16, border: `1px solid ${THEME.border}`, boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, color: THEME.textMuted, fontSize: 12, fontWeight: 700 }}>
                   <TrendingUp size={16} color={COLORS.profit} />
                   Confirmed Revenue
                 </div>
-                <div style={{ fontFamily: "'Fraunces', serif", fontSize: 22, fontWeight: 700, color: COLORS.ink, marginTop: 4 }}>
+                <div style={{ fontFamily: "'Fraunces', serif", fontSize: 22, fontWeight: 700, color: THEME.textMain, marginTop: 4 }}>
                   {idr(dashboardStats.totalRev)}
                 </div>
               </div>
 
               {canSeeCosts && (
-                <div style={{ background: COLORS.sand, borderRadius: 14, padding: 16, boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, color: COLORS.muted, fontSize: 12, fontWeight: 600 }}>
+                <div style={{ background: THEME.cardBg, borderRadius: 14, padding: 16, border: `1px solid ${THEME.border}`, boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, color: THEME.textMuted, fontSize: 12, fontWeight: 700 }}>
                     <DollarSign size={16} color={COLORS.coral} />
                     Estimated Profit
                   </div>
@@ -2755,42 +3037,28 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
                 </div>
               )}
 
-              <div style={{ background: COLORS.sand, borderRadius: 14, padding: 16, boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, color: COLORS.muted, fontSize: 12, fontWeight: 600 }}>
+              <div style={{ background: THEME.cardBg, borderRadius: 14, padding: 16, border: `1px solid ${THEME.border}`, boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, color: THEME.textMuted, fontSize: 12, fontWeight: 700 }}>
                   <CheckCircle2 size={16} color={COLORS.confirmedText} />
                   Confirmed Tours
                 </div>
-                <div style={{ fontFamily: "'Fraunces', serif", fontSize: 22, fontWeight: 700, color: COLORS.ink, marginTop: 4 }}>
+                <div style={{ fontFamily: "'Fraunces', serif", fontSize: 22, fontWeight: 700, color: THEME.textMain, marginTop: 4 }}>
                   {dashboardStats.totalConfirmed} / {dashboardStats.totalSaved}
-                </div>
-              </div>
-
-              <div style={{ background: COLORS.sand, borderRadius: 14, padding: 16, boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, color: COLORS.muted, fontSize: 12, fontWeight: 600 }}>
-                  <FileSpreadsheet size={16} color={COLORS.coralSoft} />
-                  Conversion Rate
-                </div>
-                <div style={{ fontFamily: "'Fraunces', serif", fontSize: 22, fontWeight: 700, color: COLORS.ink, marginTop: 4 }}>
-                  {dashboardStats.conversionRate}%
                 </div>
               </div>
             </div>
 
-            <div style={{ background: COLORS.sand, borderRadius: 16, padding: 16, boxShadow: "0 6px 18px rgba(0,0,0,0.2)" }}>
+            {/* Saved Quotes Table */}
+            <div style={{ background: THEME.cardBg, borderRadius: 16, padding: 16, border: `1px solid ${THEME.border}`, boxShadow: "0 6px 18px rgba(0,0,0,0.1)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-                <h3 style={{ margin: 0, fontFamily: "'Fraunces', serif", fontSize: 18, color: COLORS.ink }}>
+                <h3 style={{ margin: 0, fontFamily: "'Fraunces', serif", fontSize: 18, color: THEME.textMain }}>
                   Saved Quote & Booking History
                 </h3>
-                {!canSeeAllQuotes && (
-                  <span style={{ fontSize: 11.5, color: COLORS.coral, fontWeight: 600 }}>
-                    (Filtered: Viewing your personal quotations)
-                  </span>
-                )}
               </div>
 
               {filteredHistory.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "30px 10px", color: COLORS.muted, fontSize: 13 }}>
-                  No saved quotes found. Save quotes in the simulator to view them here.
+                <div style={{ textAlign: "center", padding: "30px 10px", color: THEME.textMuted, fontSize: 13, fontWeight: 600 }}>
+                  No saved quotes found in the database.
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -2798,7 +3066,7 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
                     <div
                       key={item.id}
                       style={{
-                        background: COLORS.sandDeep,
+                        background: THEME.cardDeepBg,
                         borderRadius: 12,
                         padding: 12,
                         display: "flex",
@@ -2806,28 +3074,25 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
                         alignItems: "center",
                         flexWrap: "wrap",
                         gap: 10,
+                        border: `1px solid ${THEME.border}`,
                       }}
                     >
                       <div>
-                        <div style={{ fontWeight: 700, fontSize: 14, color: COLORS.ink, display: "flex", alignItems: "center", gap: 6 }}>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: THEME.textMain, display: "flex", alignItems: "center", gap: 6 }}>
                           <Tag size={13} color={COLORS.coral} />
                           <span>{item.title}</span>
-                          <span style={{ fontSize: 11, color: COLORS.muted, background: "#FFF", padding: "1px 6px", borderRadius: 4, fontFamily: "monospace" }}>
+                          <span style={{ fontSize: 11, color: THEME.textMuted, background: THEME.cardBg, padding: "1px 6px", borderRadius: 4, fontFamily: "monospace" }}>
                             ID: {item.id}
                           </span>
                         </div>
-                        <div style={{ fontSize: 11.5, color: COLORS.muted, marginTop: 4 }}>
-                          🗓 Date: <strong>{item.activityDate || "TBA"}</strong> · {item.days?.length || 1} Day(s) · {item.adults || 2} Pax
-                          <span style={{ marginLeft: 8 }}>
-                            | Created by: <strong>{item.savedBy || "agent"}</strong>
-                            {item.pic && <span> | 👤 PIC: <strong>{item.pic}</strong> </span>}
-                          </span>
+                        <div style={{ fontSize: 11.5, color: THEME.textMuted, marginTop: 4, fontWeight: 600 }}>
+                          🗓 Date: <strong>{item.activityDate || "TBA"}</strong> · PIC: <strong>{item.pic || "N/A"}</strong> · Agent: <strong>{item.agent || "N/A"}</strong>
                         </div>
                       </div>
 
                       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                         <div style={{ textAlign: "right" }}>
-                          <div style={{ fontWeight: 700, fontSize: 15, color: COLORS.ink }}>
+                          <div style={{ fontWeight: 700, fontSize: 15, color: THEME.textMain }}>
                             {idr(item.calculatedPrice || 0)}
                           </div>
                           <select
@@ -2838,9 +3103,9 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
                               fontWeight: 700,
                               borderRadius: 6,
                               padding: "2px 6px",
-                              border: `1px solid ${COLORS.line}`,
+                              border: `1px solid ${THEME.border}`,
                               background: item.status === "Confirmed" ? "#E8F5E9" : "#FFF",
-                              color: item.status === "Confirmed" ? "#2E7D32" : COLORS.ink,
+                              color: item.status === "Confirmed" ? "#1B5E20" : "#132422",
                             }}
                           >
                             <option value="Draft">Draft</option>
@@ -2858,243 +3123,503 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
           </div>
         )}
 
-        {}
-        {currentPage === "catalog" && canEditCat && !isFreelanceSales && (
-          <div style={{ background: COLORS.sand, borderRadius: 18, padding: 18, boxShadow: "0 8px 24px rgba(0,0,0,0.25)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 10 }}>
+        {currentPage === "catalog" && canEditCat && (
+          <div style={{ background: THEME.cardBg, borderRadius: 18, padding: 18, border: `1px solid ${THEME.border}`, boxShadow: "0 8px 24px rgba(0,0,0,0.12)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
               <div>
-                <h2 style={{ margin: 0, fontFamily: "'Fraunces', serif", fontSize: 20, color: COLORS.ink }}>
-                  Vendor Catalog Editor
+                <h2 style={{ margin: 0, fontFamily: "'Fraunces', serif", fontSize: 20, color: THEME.textMain }}>
+                  Vendor Catalog & Preset Manager
                 </h2>
-                <p style={{ margin: "2px 0 0", fontSize: 12, color: COLORS.muted }}>
-                  Full GOD & Admin management for vendor pricing rules, items, and custom categories.
+                <p style={{ margin: "2px 0 0", fontSize: 12, color: THEME.textMuted, fontWeight: 600 }}>
+                  Manage vendor prices, unit capacities, pricing rules, and 1-click package shortcuts.
                 </p>
               </div>
-
-              <button
-                onClick={handleResetCatalogToDefault}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 4,
-                  background: COLORS.coralSoft,
-                  color: COLORS.ink,
-                  border: "none",
-                  borderRadius: 8,
-                  padding: "6px 12px",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                }}
-              >
-                <RefreshCw size={13} /> Reset Factory Catalog
-              </button>
+              {isGodUser && (
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button
+                    onClick={handleResetFactoryPresets}
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: 8,
+                      background: COLORS.coral,
+                      color: "#FFF",
+                      border: "none",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    <RotateCcw size={13} /> Reset Presets
+                  </button>
+                  <button
+                    onClick={handleResetFactoryCatalog}
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: 8,
+                      background: COLORS.oceanLight,
+                      color: "#F4EEDD",
+                      border: "none",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    <RotateCcw size={13} /> Reset Catalog
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* Fast Item & Category Search Bar */}
-            <div style={{ position: "relative", marginBottom: 14 }}>
-              <Search size={15} color={COLORS.muted} style={{ position: "absolute", left: 12, top: 11 }} />
-              <input
-                value={catalogQuery}
-                onChange={(e) => setCatalogQuery(e.target.value)}
-                placeholder="Search vendor items or categories..."
-                style={{
-                  width: "100%",
-                  padding: "10px 12px 10px 34px",
-                  borderRadius: 12,
-                  border: `1px solid ${COLORS.line}`,
-                  background: "#FFF",
-                  fontSize: 13.5,
-                  boxSizing: "border-box",
-                }}
-              />
-            </div>
+            {/* Quick Package Shortcuts Manager Section */}
+            <div style={{ background: COLORS.oceanLight, borderRadius: 14, padding: 16, marginBottom: 20, border: `1px solid ${COLORS.line}` }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#F4EEDD", display: "flex", alignItems: "center", gap: 6 }}>
+                  <Sparkles size={16} color="#FFD166" />
+                  Quick Package Shortcuts Manager ({presets.length} Active Presets)
+                </h3>
+              </div>
 
-            {/* Form to Add New Category */}
-            <form onSubmit={handleAddNewCategory} style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-              <input
-                type="text"
-                placeholder="New Category Title (e.g. Rafting & ATV, Helicopter Tours)"
-                value={newCatName}
-                onChange={(e) => setNewCatName(e.target.value)}
-                style={{
-                  flex: 1,
-                  padding: "8px 12px",
-                  borderRadius: 8,
-                  border: `1px solid ${COLORS.line}`,
-                  fontSize: 12.5,
-                  background: "#FFF",
-                }}
-              />
-              <button
-                type="submit"
-                style={{
-                  padding: "8px 14px",
-                  borderRadius: 8,
-                  border: "none",
-                  background: COLORS.ocean,
-                  color: COLORS.sand,
-                  fontWeight: 700,
-                  fontSize: 12,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                }}
-              >
-                <FolderPlus size={14} /> Add Category
-              </button>
-            </form>
-
-            {/* Catalog Categories List */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              {searchedCatalog.map((cat) => (
-                <div key={cat.id} style={{ background: "#FFF", borderRadius: 14, padding: 14, border: `1px solid ${COLORS.line}` }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, borderBottom: `1px solid ${COLORS.line}`, paddingBottom: 6 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: COLORS.ocean, display: "flex", alignItems: "center", gap: 6 }}>
-                      <Folder size={16} color={COLORS.coral} />
-                      <span>{cat.title}</span>
-                      <span style={{ fontSize: 11, color: COLORS.muted }}>({cat.items.length} items)</span>
+              {/* List of Presets */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+                {presets.map((p) => (
+                  <div
+                    key={p.id}
+                    style={{
+                      background: THEME.cardBg,
+                      borderRadius: 10,
+                      padding: "10px 14px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      border: `1px solid ${THEME.border}`,
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 13.5, color: THEME.textMain, display: "flex", alignItems: "center", gap: 6 }}>
+                        <Tag size={13} color={COLORS.coral} />
+                        {p.label}
+                      </div>
+                      <div style={{ fontSize: 11, color: THEME.textMuted, marginTop: 2, fontWeight: 600 }}>
+                        Contains {p.picks ? p.picks.length : 0} item picks: {p.picks ? p.picks.map(([_, name]) => name).join(", ") : "None"}
+                      </div>
                     </div>
 
-                    <button
-                      onClick={() => handleDeleteCategory(cat.id)}
-                      title="Delete category"
-                      style={{ background: "none", border: "none", color: COLORS.coral, cursor: "pointer", padding: 2 }}
-                    >
-                      <Trash2 size={15} />
-                    </button>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button
+                        onClick={() => setEditingPreset(p)}
+                        style={{ padding: "4px 8px", borderRadius: 6, background: COLORS.oceanLight, color: "#F4EEDD", border: "none", fontSize: 11.5, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+                      >
+                        <Pencil size={12} /> Edit Picks
+                      </button>
+                      <button
+                        onClick={() => handleDeletePreset(p.id)}
+                        style={{ background: "none", border: "none", color: COLORS.coral, cursor: "pointer" }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Add New Package Preset Shortcut Form */}
+              <div style={{ background: THEME.cardDeepBg, borderRadius: 10, padding: 10, border: `1px solid ${THEME.border}`, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <input
+                  type="text"
+                  placeholder="New Package Shortcut Name (e.g. Snorkeling VIP Package)"
+                  value={newPresetForm.label}
+                  onChange={(e) => setNewPresetForm({ ...newPresetForm, label: e.target.value })}
+                  style={{ flex: 1, padding: "7px 10px", borderRadius: 8, border: `1px solid ${THEME.border}`, fontSize: 12, background: "#FFFFFF", color: "#132422" }}
+                />
+                <button
+                  onClick={handleCreateNewPreset}
+                  style={{ padding: "7px 12px", borderRadius: 8, background: COLORS.profit, color: "#FFF", border: "none", fontWeight: 700, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+                >
+                  <Plus size={14} /> Create Package Shortcut
+                </button>
+              </div>
+            </div>
+
+            {/* Add New Vendor Category Form */}
+            <div style={{ background: THEME.cardDeepBg, borderRadius: 12, padding: 12, marginBottom: 16, border: `1px solid ${THEME.border}`, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <input
+                type="text"
+                placeholder="New Vendor Category Name (e.g. VIP Charters, Water Sports)"
+                value={newCatTitle}
+                onChange={(e) => setNewCatTitle(e.target.value)}
+                style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: `1px solid ${THEME.border}`, fontSize: 12.5, background: "#FFFFFF", color: "#132422" }}
+              />
+              <button
+                onClick={handleAddNewCategory}
+                style={{ padding: "8px 14px", borderRadius: 8, background: COLORS.coral, color: "#FFF", border: "none", fontWeight: 700, fontSize: 12.5, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+              >
+                <Plus size={14} /> Add Category
+              </button>
+            </div>
+
+            {/* Vendor Categories & Items List */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {catalog.map((cat) => (
+                <div key={cat.id} style={{ background: THEME.cardDeepBg, borderRadius: 14, padding: 14, border: `1px solid ${THEME.border}` }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                    <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: THEME.textMain, display: "flex", alignItems: "center", gap: 6 }}>
+                      <Package size={16} color={COLORS.coral} />
+                      {cat.title} ({cat.items.length} Items)
+                    </h3>
                   </div>
 
-                  {/* Add Item Row Inside Category */}
-                  <div style={{ display: "flex", gap: 8, marginBottom: 10, background: COLORS.sandDeep, padding: 8, borderRadius: 8 }}>
+                  {/* Category Items Table */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
+                    {cat.items.map((item) => (
+                      <div
+                        key={item.id}
+                        style={{
+                          background: THEME.cardBg,
+                          borderRadius: 8,
+                          padding: "8px 12px",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          border: `1px solid ${THEME.border}`,
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: THEME.textMain }}>{item.name}</div>
+                          <div style={{ fontSize: 11, color: THEME.textMuted, fontWeight: 600 }}>
+                            Base Price: <strong>{idr(item.price)}</strong> · Rule: <strong>{item.mode || "Auto"}</strong>
+                          </div>
+                        </div>
+
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button
+                            onClick={() => setEditingCatalogItem({ ...item, catId: cat.id })}
+                            style={{ padding: "4px 8px", borderRadius: 6, background: COLORS.oceanLight, color: "#F4EEDD", border: "none", fontSize: 11.5, fontWeight: 700, cursor: "pointer" }}
+                          >
+                            <Pencil size={12} /> Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCatalogItem(cat.id, item.id)}
+                            style={{ background: "none", border: "none", color: COLORS.coral, cursor: "pointer" }}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Add New Item Row in Category */}
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", borderTop: `1px dashed ${THEME.border}`, paddingTop: 8 }}>
                     <input
                       type="text"
-                      placeholder="New vendor item name..."
+                      placeholder="Item Name"
                       value={newItemForms[cat.id]?.name || ""}
                       onChange={(e) =>
                         setNewItemForms({
                           ...newItemForms,
-                          [cat.id]: { ...(newItemForms[cat.id] || {}), name: e.target.value },
+                          [cat.id]: { ...newItemForms[cat.id], name: e.target.value },
                         })
                       }
-                      style={{ flex: 2, padding: "6px 8px", borderRadius: 6, border: `1px solid ${COLORS.line}`, fontSize: 12 }}
+                      style={{ flex: 2, minWidth: 120, padding: "6px 8px", borderRadius: 6, border: `1px solid ${THEME.border}`, fontSize: 12, background: "#FFF", color: "#132422" }}
                     />
                     <input
                       type="number"
-                      placeholder="Vendor price (IDR)"
+                      placeholder="Price (IDR)"
                       value={newItemForms[cat.id]?.price || ""}
                       onChange={(e) =>
                         setNewItemForms({
                           ...newItemForms,
-                          [cat.id]: { ...(newItemForms[cat.id] || {}), price: e.target.value },
+                          [cat.id]: { ...newItemForms[cat.id], price: e.target.value },
                         })
                       }
-                      style={{ flex: 1, padding: "6px 8px", borderRadius: 6, border: `1px solid ${COLORS.line}`, fontSize: 12 }}
+                      style={{ flex: 1, minWidth: 90, padding: "6px 8px", borderRadius: 6, border: `1px solid ${THEME.border}`, fontSize: 12, background: "#FFF", color: "#132422" }}
                     />
-                    <button
-                      onClick={() => handleAddCatalogItem(cat.id)}
-                      style={{
-                        padding: "6px 12px",
-                        borderRadius: 6,
-                        border: "none",
-                        background: COLORS.coral,
-                        color: "#FFF",
-                        fontSize: 12,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                      }}
+                    <select
+                      value={newItemForms[cat.id]?.mode || "pax"}
+                      onChange={(e) =>
+                        setNewItemForms({
+                          ...newItemForms,
+                          [cat.id]: { ...newItemForms[cat.id], mode: e.target.value },
+                        })
+                      }
+                      style={{ padding: "6px 8px", borderRadius: 6, border: `1px solid ${THEME.border}`, fontSize: 12, background: "#FFF", color: "#132422" }}
                     >
-                      + Add Item
+                      <option value="pax">Per Pax</option>
+                      <option value="unit">Per Unit</option>
+                      <option value="flat">Flat / Qty</option>
+                      <option value="tier">Tiered</option>
+                    </select>
+                    <button
+                      onClick={() => handleAddNewItemToCategory(cat.id)}
+                      style={{ padding: "6px 12px", borderRadius: 6, background: COLORS.profit, color: "#FFF", border: "none", fontWeight: 700, fontSize: 12, cursor: "pointer" }}
+                    >
+                      + Item
                     </button>
-                  </div>
-
-                  {/* Items List */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    {cat.items.map((item) => {
-                      const auto = getAutoRuleForItem(cat.id, item.name, item);
-                      return (
-                        <div
-                          key={item.id}
-                          style={{
-                            background: COLORS.sand,
-                            borderRadius: 8,
-                            padding: "8px 12px",
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                          }}
-                        >
-                          <div>
-                            <div style={{ fontSize: 12.5, fontWeight: 600, color: COLORS.ink }}>{item.name}</div>
-                            <div style={{ fontSize: 11, color: COLORS.muted }}>
-                              Rule: <strong>{auto.mode.toUpperCase()}</strong>
-                              {auto.mode === "unit" && ` · ${auto.capacity} pax/unit`}
-                              {auto.mode === "tier" && ` · Base max ${auto.threshold} pax (+${idr(auto.surcharge)}/extra)`}
-                            </div>
-                          </div>
-
-                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <span style={{ fontSize: 13, fontWeight: 700, color: COLORS.ocean }}>{idr(item.price)}</span>
-
-                            <button
-                              onClick={() => setEditingCatalogItem({ catId: cat.id, ...item, mode: auto.mode, capacity: auto.capacity, threshold: auto.threshold, surcharge: auto.surcharge })}
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 4,
-                                padding: "4px 8px",
-                                borderRadius: 6,
-                                border: `1px solid ${COLORS.line}`,
-                                background: "#FFF",
-                                color: COLORS.ink,
-                                fontSize: 11.5,
-                                fontWeight: 600,
-                                cursor: "pointer",
-                              }}
-                            >
-                              <Pencil size={12} color={COLORS.coral} /> Edit
-                            </button>
-
-                            <button
-                              onClick={() => handleDeleteCatalogItem(cat.id, item.id)}
-                              style={{ background: "none", border: "none", color: COLORS.coral, cursor: "pointer", padding: 0 }}
-                            >
-                              <X size={15} />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
                   </div>
                 </div>
               ))}
             </div>
+
+            {/* Edit Preset Shortcut Modal */}
+            {editingPreset && (
+              <div
+                style={{
+                  position: "fixed",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  background: "rgba(0,0,0,0.6)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  zIndex: 1000,
+                  padding: 16,
+                }}
+              >
+                <div style={{ background: THEME.cardBg, borderRadius: 16, padding: 20, maxWidth: 500, width: "100%", maxHeight: "85vh", overflowY: "auto", border: `1px solid ${THEME.border}`, boxShadow: "0 12px 32px rgba(0,0,0,0.3)" }}>
+                  <h3 style={{ margin: "0 0 12px", fontSize: 16, color: THEME.textMain }}>
+                    Edit Package Shortcut: {editingPreset.label}
+                  </h3>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: THEME.textMain, marginBottom: 4 }}>Shortcut Label</label>
+                      <input
+                        type="text"
+                        value={editingPreset.label}
+                        onChange={(e) => setEditingPreset({ ...editingPreset, label: e.target.value })}
+                        style={{ width: "100%", padding: "8px", borderRadius: 8, border: `1px solid ${THEME.border}`, fontSize: 12.5, background: "#FFF", color: "#132422", boxSizing: "border-box" }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: THEME.textMain, marginBottom: 6 }}>
+                        Select Vendor Items to Include in Preset:
+                      </label>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 260, overflowY: "auto", paddingRight: 4 }}>
+                        {catalog.map((cat) => (
+                          <div key={cat.id} style={{ background: THEME.cardDeepBg, padding: 8, borderRadius: 8 }}>
+                            <div style={{ fontWeight: 700, fontSize: 12, color: COLORS.coral, marginBottom: 4 }}>{cat.title}</div>
+                            {cat.items.map((i) => {
+                              const isChecked = editingPreset.picks.some(([cId, name]) => cId === cat.id && name === i.name);
+                              return (
+                                <label key={i.id} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: THEME.textMain, marginBottom: 4, cursor: "pointer" }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setEditingPreset({
+                                          ...editingPreset,
+                                          picks: [...editingPreset.picks, [cat.id, i.name]],
+                                        });
+                                      } else {
+                                        setEditingPreset({
+                                          ...editingPreset,
+                                          picks: editingPreset.picks.filter(([cId, name]) => !(cId === cat.id && name === i.name)),
+                                        });
+                                      }
+                                    }}
+                                  />
+                                  {i.name} ({idr(i.price)})
+                                </label>
+                              );
+                            })}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                      <button
+                        onClick={() => handleSavePreset(editingPreset)}
+                        style={{ flex: 1, padding: "10px", borderRadius: 8, background: COLORS.profit, color: "#FFF", border: "none", fontWeight: 700, cursor: "pointer" }}
+                      >
+                        Save Package Shortcut
+                      </button>
+                      <button
+                        onClick={() => setEditingPreset(null)}
+                        style={{ padding: "10px 14px", borderRadius: 8, background: THEME.cardDeepBg, color: THEME.textMain, border: `1px solid ${THEME.border}`, fontWeight: 700, cursor: "pointer" }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Catalog Item Edit Overlay Modal */}
+            {editingCatalogItem && (
+              <div
+                style={{
+                  position: "fixed",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  background: "rgba(0,0,0,0.5)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  zIndex: 1000,
+                  padding: 16,
+                }}
+              >
+                <div style={{ background: THEME.cardBg, borderRadius: 16, padding: 20, maxWidth: 420, width: "100%", border: `1px solid ${THEME.border}`, boxShadow: "0 12px 32px rgba(0,0,0,0.3)" }}>
+                  <h3 style={{ margin: "0 0 12px", fontSize: 16, color: THEME.textMain }}>
+                    Edit Vendor Item: {editingCatalogItem.name}
+                  </h3>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: THEME.textMain, marginBottom: 4 }}>Item Name</label>
+                      <input
+                        type="text"
+                        value={editingCatalogItem.name}
+                        onChange={(e) => setEditingCatalogItem({ ...editingCatalogItem, name: e.target.value })}
+                        style={{ width: "100%", padding: "8px", borderRadius: 8, border: `1px solid ${THEME.border}`, fontSize: 12.5, background: "#FFF", color: "#132422", boxSizing: "border-box" }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: THEME.textMain, marginBottom: 4 }}>Vendor Base Price (IDR)</label>
+                      <input
+                        type="number"
+                        value={editingCatalogItem.price}
+                        onChange={(e) => setEditingCatalogItem({ ...editingCatalogItem, price: Number(e.target.value) })}
+                        style={{ width: "100%", padding: "8px", borderRadius: 8, border: `1px solid ${THEME.border}`, fontSize: 12.5, background: "#FFF", color: "#132422", boxSizing: "border-box" }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: THEME.textMain, marginBottom: 4 }}>Pricing Mode</label>
+                      <select
+                        value={editingCatalogItem.mode || "pax"}
+                        onChange={(e) => setEditingCatalogItem({ ...editingCatalogItem, mode: e.target.value })}
+                        style={{ width: "100%", padding: "8px", borderRadius: 8, border: `1px solid ${THEME.border}`, fontSize: 12.5, background: "#FFF", color: "#132422" }}
+                      >
+                        <option value="pax">Per Pax</option>
+                        <option value="unit">Per Unit (Capacity Based)</option>
+                        <option value="flat">Flat Quantity Stepper</option>
+                        <option value="tier">Tiered (Base + Extra Pax Surcharge)</option>
+                      </select>
+                    </div>
+
+                    {editingCatalogItem.mode === "unit" && (
+                      <div>
+                        <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: THEME.textMain, marginBottom: 4 }}>Unit Pax Capacity</label>
+                        <input
+                          type="number"
+                          value={editingCatalogItem.capacity ?? 4}
+                          onChange={(e) => setEditingCatalogItem({ ...editingCatalogItem, capacity: Number(e.target.value) })}
+                          style={{ width: "100%", padding: "8px", borderRadius: 8, border: `1px solid ${THEME.border}`, fontSize: 12.5, background: "#FFF", color: "#132422", boxSizing: "border-box" }}
+                        />
+                      </div>
+                    )}
+
+                    {editingCatalogItem.mode === "tier" && (
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                        <div>
+                          <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: THEME.textMain, marginBottom: 2 }}>Base Pax Max</label>
+                          <input
+                            type="number"
+                            value={editingCatalogItem.threshold ?? 2}
+                            onChange={(e) => setEditingCatalogItem({ ...editingCatalogItem, threshold: Number(e.target.value) })}
+                            style={{ width: "100%", padding: "6px", borderRadius: 6, border: `1px solid ${THEME.border}`, fontSize: 12, background: "#FFF", color: "#132422" }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: THEME.textMain, marginBottom: 2 }}>Extra Surcharge (IDR)</label>
+                          <input
+                            type="number"
+                            value={editingCatalogItem.surcharge ?? 50000}
+                            onChange={(e) => setEditingCatalogItem({ ...editingCatalogItem, surcharge: Number(e.target.value) })}
+                            style={{ width: "100%", padding: "6px", borderRadius: 6, border: `1px solid ${THEME.border}`, fontSize: 12, background: "#FFF", color: "#132422" }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                      <button
+                        onClick={() => handleSaveCatalogItem(editingCatalogItem)}
+                        style={{ flex: 1, padding: "10px", borderRadius: 8, background: COLORS.profit, color: "#FFF", border: "none", fontWeight: 700, cursor: "pointer" }}
+                      >
+                        Save Changes
+                      </button>
+                      <button
+                        onClick={() => setEditingCatalogItem(null)}
+                        style={{ padding: "10px 14px", borderRadius: 8, background: THEME.cardDeepBg, color: THEME.textMain, border: `1px solid ${THEME.border}`, fontWeight: 700, cursor: "pointer" }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
-        {}
         {currentPage === "users" && isGodUser && (
-          <div style={{ background: COLORS.sand, borderRadius: 18, padding: 18, boxShadow: "0 8px 24px rgba(0,0,0,0.25)" }}>
+          <div style={{ background: THEME.cardBg, borderRadius: 18, padding: 18, border: `1px solid ${THEME.border}`, boxShadow: "0 8px 24px rgba(0,0,0,0.12)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
               <ShieldAlert size={26} color={COLORS.coral} />
               <div>
-                <h2 style={{ margin: 0, fontFamily: "'Fraunces', serif", fontSize: 20, color: COLORS.ink }}>
-                  GOD Access Governance & User Permissions
+                <h2 style={{ margin: 0, fontFamily: "'Fraunces', serif", fontSize: 20, color: THEME.textMain }}>
+                  God Access Governance
                 </h2>
-                <p style={{ margin: "2px 0 0", fontSize: 12, color: COLORS.muted }}>
-                  Assign user roles (Admin, Staff, Freelance Sales, Guides), passwords, and feature access permissions.
+                <p style={{ margin: "2px 0 0", fontSize: 12, color: THEME.textMuted, fontWeight: 600 }}>
+                  Create accounts, set profit margin limits, and customize role permissions.
                 </p>
               </div>
             </div>
 
+            {/* Supabase Cloud Sync Settings Panel */}
+            <div style={{ background: COLORS.oceanLight, borderRadius: 14, padding: 14, marginBottom: 18, border: `1px solid ${COLORS.line}` }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#F4EEDD", fontWeight: 700, fontSize: 13.5, marginBottom: 8 }}>
+                <Cloud size={16} color="#FFD166" />
+                <span>Supabase Cloud Database Settings (GOD Only)</span>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 11, color: "#A3C2BD", fontWeight: 600, marginBottom: 2 }}>Supabase Project URL</label>
+                  <input
+                    type="text"
+                    placeholder="https://xyz.supabase.co"
+                    value={supabaseConfig.url}
+                    onChange={(e) => setSupabaseConfig({ ...supabaseConfig, url: e.target.value })}
+                    style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: `1px solid ${COLORS.line}`, fontSize: 11.5, background: "#FFF", color: COLORS.ink, boxSizing: "border-box" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 11, color: "#A3C2BD", fontWeight: 600, marginBottom: 2 }}>Supabase Anon API Key</label>
+                  <input
+                    type="password"
+                    placeholder="eyJhbGciOi..."
+                    value={supabaseConfig.apiKey}
+                    onChange={(e) => setSupabaseConfig({ ...supabaseConfig, apiKey: e.target.value })}
+                    style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: `1px solid ${COLORS.line}`, fontSize: 11.5, background: "#FFF", color: COLORS.ink, boxSizing: "border-box" }}
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Account Registration Form */}
-            <div style={{ background: COLORS.sandDeep, borderRadius: 14, padding: 16, marginBottom: 20, border: `1px solid ${COLORS.line}` }}>
-              <h3 style={{ margin: "0 0 10px", fontSize: 14, color: COLORS.ink, display: "flex", alignItems: "center", gap: 6 }}>
-                <UserPlus size={16} color={COLORS.coral} /> Register New Account & Assign Permissions
+            <div style={{ background: THEME.cardDeepBg, borderRadius: 14, padding: 16, marginBottom: 20, border: `1px solid ${THEME.border}` }}>
+              <h3 style={{ margin: "0 0 10px", fontSize: 14, color: THEME.textMain, display: "flex", alignItems: "center", gap: 6 }}>
+                <UserPlus size={16} color={COLORS.coral} /> Register New Team Account
               </h3>
 
-              {userNotice.text && (
+              {userNotice.text ? (
                 <div
                   style={{
                     padding: "8px 12px",
@@ -3105,123 +3630,138 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
                     alignItems: "center",
                     gap: 6,
                     background: userNotice.type === "error" ? "#FFEBEE" : "#E8F5E9",
-                    color: userNotice.type === "error" ? "#C62828" : "#2E7D32",
+                    color: userNotice.type === "error" ? "#C62828" : "#1B5E20",
                     border: `1px solid ${userNotice.type === "error" ? "#EF9A9A" : "#A5D6A7"}`,
                   }}
                 >
                   {userNotice.type === "error" ? <AlertCircle size={14} /> : <CheckCircle size={14} />}
                   <span>{userNotice.text}</span>
                 </div>
-              )}
+              ) : null}
 
               <form onSubmit={handleGodCreateUser} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 }}>
                   <div>
-                    <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: COLORS.ink, marginBottom: 4 }}>Full Name</label>
+                    <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: THEME.textMain, marginBottom: 4 }}>Full Name</label>
                     <input
                       type="text"
                       required
                       placeholder="e.g. Alex Freelance Partner"
                       value={newUserForm.name}
                       onChange={(e) => setNewUserForm({ ...newUserForm, name: e.target.value })}
-                      style={{ width: "100%", padding: "7px 9px", borderRadius: 8, border: `1px solid ${COLORS.line}`, fontSize: 12, boxSizing: "border-box" }}
+                      style={{ width: "100%", padding: "7px 9px", borderRadius: 8, border: `1px solid ${THEME.border}`, fontSize: 12, background: "#FFF", color: "#132422", boxSizing: "border-box" }}
                     />
                   </div>
 
                   <div>
-                    <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: COLORS.ink, marginBottom: 4 }}>Username</label>
+                    <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: THEME.textMain, marginBottom: 4 }}>Username</label>
                     <input
                       type="text"
                       required
                       placeholder="e.g. alex2026"
                       value={newUserForm.username}
                       onChange={(e) => setNewUserForm({ ...newUserForm, username: e.target.value })}
-                      style={{ width: "100%", padding: "7px 9px", borderRadius: 8, border: `1px solid ${COLORS.line}`, fontSize: 12, boxSizing: "border-box" }}
+                      style={{ width: "100%", padding: "7px 9px", borderRadius: 8, border: `1px solid ${THEME.border}`, fontSize: 12, background: "#FFF", color: "#132422", boxSizing: "border-box" }}
                     />
                   </div>
 
                   <div>
-                    <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: COLORS.ink, marginBottom: 4 }}>Initial Password</label>
+                    <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: THEME.textMain, marginBottom: 4 }}>Initial Password</label>
                     <input
                       type="text"
                       required
                       placeholder="Set account password"
                       value={newUserForm.password}
                       onChange={(e) => setNewUserForm({ ...newUserForm, password: e.target.value })}
-                      style={{ width: "100%", padding: "7px 9px", borderRadius: 8, border: `1px solid ${COLORS.line}`, fontSize: 12, boxSizing: "border-box" }}
+                      style={{ width: "100%", padding: "7px 9px", borderRadius: 8, border: `1px solid ${THEME.border}`, fontSize: 12, background: "#FFF", color: "#132422", boxSizing: "border-box" }}
                     />
                   </div>
 
                   <div>
-                    <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: COLORS.ink, marginBottom: 4 }}>Role Class</label>
+                    <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: THEME.textMain, marginBottom: 4 }}>Role Class</label>
                     <select
                       value={newUserForm.role}
                       onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value })}
-                      style={{ width: "100%", padding: "7px 9px", borderRadius: 8, border: `1px solid ${COLORS.line}`, fontSize: 12, fontWeight: 600, background: "#FFF" }}
+                      style={{ width: "100%", padding: "7px 9px", borderRadius: 8, border: `1px solid ${THEME.border}`, fontSize: 12, fontWeight: 600, background: "#FFF", color: "#132422" }}
                     >
                       <option value="Staff Agent">Staff Agent</option>
-                      <option value="Freelance Sales">Freelance Sales (Simulator Only)</option>
+                      <option value="Freelance Sales">Freelance Sales</option>
                       <option value="Partner Agency / B2B Reseller">Partner Agency / B2B Reseller</option>
                       <option value="Tour Guide / Field Lead">Tour Guide / Field Lead</option>
                       <option value="Operations & Finance">Operations & Finance</option>
                       <option value="Admin Manager">Admin Manager</option>
                     </select>
                   </div>
-                </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10, background: COLORS.sand, padding: 10, borderRadius: 8 }}>
                   <div>
-                    <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: COLORS.ink, marginBottom: 2 }}>Min Margin % Target</label>
+                    <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: THEME.textMain, marginBottom: 4 }}>Min Profit Margin (%)</label>
                     <input
                       type="number"
-                      min={0}
-                      max={100}
                       value={newUserForm.minMargin}
-                      onChange={(e) => setNewUserForm({ ...newUserForm, minMargin: Number(e.target.value) })}
-                      style={{ width: "100%", padding: "5px 8px", borderRadius: 6, border: `1px solid ${COLORS.line}`, fontSize: 12, boxSizing: "border-box" }}
+                      onChange={(e) => setNewUserForm({ ...newUserForm, minMargin: e.target.value })}
+                      style={{ width: "100%", padding: "7px 9px", borderRadius: 8, border: `1px solid ${THEME.border}`, fontSize: 12, background: "#FFF", color: "#132422", boxSizing: "border-box" }}
                     />
                   </div>
+                </div>
 
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4, justifyContent: "center" }}>
-                    <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: COLORS.ink, cursor: "pointer" }}>
-                      <input
-                        type="checkbox"
-                        checked={newUserForm.canAccessDashboard !== false}
-                        onChange={(e) => setNewUserForm({ ...newUserForm, canAccessDashboard: e.target.checked })}
-                      />
-                      <span>Allow Dashboard Access (Track Personal Quotes)</span>
-                    </label>
+                {/* Granular Permission Toggles */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8, borderTop: `1px dashed ${THEME.border}`, paddingTop: 10 }}>
+                  <label style={{ fontSize: 11.5, fontWeight: 600, color: THEME.textMain, display: "flex", alignItems: "center", gap: 6 }}>
+                    <input
+                      type="checkbox"
+                      checked={newUserForm.canSeeVendorCosts}
+                      onChange={(e) => setNewUserForm({ ...newUserForm, canSeeVendorCosts: e.target.checked })}
+                    />
+                    Can View Vendor Costs & Margins
+                  </label>
 
-                    <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: COLORS.ink, cursor: "pointer" }}>
-                      <input
-                        type="checkbox"
-                        checked={newUserForm.canEditCatalog}
-                        onChange={(e) => setNewUserForm({ ...newUserForm, canEditCatalog: e.target.checked })}
-                      />
-                      <span>Allow Editing Master Catalog</span>
-                    </label>
+                  <label style={{ fontSize: 11.5, fontWeight: 600, color: THEME.textMain, display: "flex", alignItems: "center", gap: 6 }}>
+                    <input
+                      type="checkbox"
+                      checked={newUserForm.canEditCatalog}
+                      onChange={(e) => setNewUserForm({ ...newUserForm, canEditCatalog: e.target.checked })}
+                    />
+                    Can Edit Vendor Catalog
+                  </label>
 
-                    <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: COLORS.ink, cursor: "pointer" }}>
-                      <input
-                        type="checkbox"
-                        checked={newUserForm.canSeeAllDashboardQuotes}
-                        onChange={(e) => setNewUserForm({ ...newUserForm, canSeeAllDashboardQuotes: e.target.checked })}
-                      />
-                      <span>Can View All Staff Quotes in Dashboard</span>
-                    </label>
-                  </div>
+                  <label style={{ fontSize: 11.5, fontWeight: 600, color: THEME.textMain, display: "flex", alignItems: "center", gap: 6 }}>
+                    <input
+                      type="checkbox"
+                      checked={newUserForm.canEditPresets}
+                      onChange={(e) => setNewUserForm({ ...newUserForm, canEditPresets: e.target.checked })}
+                    />
+                    Can Edit Package Presets
+                  </label>
+
+                  <label style={{ fontSize: 11.5, fontWeight: 600, color: THEME.textMain, display: "flex", alignItems: "center", gap: 6 }}>
+                    <input
+                      type="checkbox"
+                      checked={newUserForm.canSeeAllDashboardQuotes}
+                      onChange={(e) => setNewUserForm({ ...newUserForm, canSeeAllDashboardQuotes: e.target.checked })}
+                    />
+                    Can View All Company Quotes
+                  </label>
+
+                  <label style={{ fontSize: 11.5, fontWeight: 600, color: THEME.textMain, display: "flex", alignItems: "center", gap: 6 }}>
+                    <input
+                      type="checkbox"
+                      checked={newUserForm.canAccessDashboard}
+                      onChange={(e) => setNewUserForm({ ...newUserForm, canAccessDashboard: e.target.checked })}
+                    />
+                    Can Access Personal Dashboard
+                  </label>
                 </div>
 
                 <button
                   type="submit"
                   style={{
-                    padding: "8px 12px",
+                    padding: "10px",
                     borderRadius: 8,
                     border: "none",
                     background: COLORS.coral,
                     color: "#FFF",
                     fontWeight: 700,
-                    fontSize: 12.5,
+                    fontSize: 13,
                     cursor: "pointer",
                     display: "flex",
                     alignItems: "center",
@@ -3229,14 +3769,14 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
                     gap: 6,
                   }}
                 >
-                  <UserPlus size={14} /> Create Account
+                  <UserPlus size={15} /> Create & Publish Account
                 </button>
               </form>
             </div>
 
-            {/* Account Directory */}
-            <h3 style={{ margin: "0 0 10px", fontSize: 15, color: COLORS.ink }}>
-              System Accounts Governance Directory
+            {/* Accounts Directory */}
+            <h3 style={{ margin: "0 0 10px", fontSize: 15, color: THEME.textMain }}>
+              Registered Accounts Directory ({usersList.length})
             </h3>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -3244,42 +3784,193 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
                 <div
                   key={user.id}
                   style={{
-                    background: COLORS.sandDeep,
-                    borderRadius: 12,
-                    padding: 12,
+                    background: THEME.cardDeepBg,
+                    borderRadius: 10,
+                    padding: "10px 14px",
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
-                    flexWrap: "wrap",
-                    gap: 10,
+                    border: `1px solid ${THEME.border}`,
                   }}
                 >
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: 13.5, color: COLORS.ink, display: "flex", alignItems: "center", gap: 6 }}>
-                      {user.role === "GOD" ? <ShieldAlert size={14} color={COLORS.coral} /> : <User size={14} color={COLORS.muted} />}
-                      {user.name}
-                      <span style={{ fontSize: 11, color: COLORS.muted }}>({user.username})</span>
-                      <span style={{ fontSize: 11, color: COLORS.coral, fontWeight: 700, background: "#FFF", padding: "1px 6px", borderRadius: 4 }}>
-                        Pass: {user.password || "N/A"}
+                    <div style={{ fontWeight: 700, fontSize: 13.5, color: THEME.textMain, display: "flex", alignItems: "center", gap: 6 }}>
+                      <User size={14} color={COLORS.coral} />
+                      <span>{user.name}</span>
+                      <span style={{ fontSize: 11, color: THEME.textMuted, background: THEME.cardBg, padding: "1px 6px", borderRadius: 4 }}>
+                        @{user.username}
+                      </span>
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 6px", borderRadius: 4, background: COLORS.oceanLight, color: "#F4EEDD" }}>
+                        {user.role}
                       </span>
                     </div>
-                    <div style={{ fontSize: 11.5, color: COLORS.muted, marginTop: 2 }}>
-                      Role: <strong>{user.role}</strong> · Min Margin: <strong>{user.minMargin}%</strong> ·
-                      Vendor Costs: <strong>{user.canSeeVendorCosts ? "Visible" : "Hidden"}</strong> ·
-                      Dashboard Access: <strong>{user.canAccessDashboard !== false ? "Enabled" : "Disabled"}</strong>
+                    <div style={{ fontSize: 11, color: THEME.textMuted, marginTop: 4, fontWeight: 600 }}>
+                      Min Margin: {user.minMargin}% · Email: {user.email}
                     </div>
                   </div>
 
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  {isGodUser && user.id !== currentUser.id && (
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button
+                        onClick={() => setEditingUser(user)}
+                        style={{ padding: "4px 8px", borderRadius: 6, background: COLORS.oceanLight, color: "#F4EEDD", border: "none", fontSize: 11.5, fontWeight: 700, cursor: "pointer" }}
+                      >
+                        Edit Rules
+                      </button>
+                      <button
+                        onClick={() => deleteUserAccount(user.id)}
+                        style={{ background: "none", border: "none", color: COLORS.coral, cursor: "pointer" }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {showAiItineraryModal && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: "rgba(0,0,0,0.65)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+              padding: 16,
+            }}
+          >
+            <div
+              style={{
+                background: THEME.cardBg,
+                borderRadius: 20,
+                padding: 24,
+                maxWidth: 640,
+                width: "100%",
+                maxHeight: "90vh",
+                overflowY: "auto",
+                border: `1px solid ${THEME.border}`,
+                boxShadow: "0 16px 40px rgba(0,0,0,0.35)",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <Sparkles size={22} color={COLORS.coral} />
+                  <h3 style={{ margin: 0, fontFamily: "'Fraunces', serif", fontSize: 20, color: THEME.textMain }}>
+                    Gemini AI Itinerary Creator
+                  </h3>
+                </div>
+                <button onClick={() => setShowAiItineraryModal(false)} style={{ background: "none", border: "none", color: THEME.textMuted, cursor: "pointer" }}>
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Quick Inspiration Prompts */}
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: THEME.textMain, marginBottom: 6 }}>
+                  Quick Inspiration Prompts:
+                </label>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {[
+                    "3 Days Honeymoon with Snorkeling & Beach Clubs",
+                    "1 Day West Nusa Penida Express + Private Car",
+                    "2 Days Scuba Diving Certified + Luxury Resort",
+                    "East & West Combination Family Tour (2 Adults, 2 Kids)",
+                  ].map((tpl) => (
                     <button
-                      onClick={() => setEditingUser(user)}
+                      key={tpl}
+                      onClick={() => setAiItineraryPrompt(tpl)}
                       style={{
                         padding: "5px 10px",
+                        borderRadius: 8,
+                        border: `1px solid ${THEME.border}`,
+                        background: THEME.cardDeepBg,
+                        color: THEME.textMain,
+                        fontSize: 11.5,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                      }}
+                    >
+                      💡 {tpl}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Prompt Input Area */}
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: THEME.textMain, marginBottom: 4 }}>
+                  Describe Your Desired Guest Tour Experience:
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="e.g. Create a 2-day relaxed luxury itinerary with Manta Point snorkeling, oceanview lunch, private car, and fastboat transfers..."
+                  value={aiItineraryPrompt}
+                  onChange={(e) => setAiItineraryPrompt(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "10px",
+                    borderRadius: 10,
+                    border: `1px solid ${THEME.border}`,
+                    fontSize: 12.5,
+                    background: "#FFFFFF",
+                    color: "#132422",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+
+              <button
+                onClick={generateAiItineraryWithGemini}
+                disabled={isGeneratingItinerary || !aiItineraryPrompt.trim()}
+                style={{
+                  width: "100%",
+                  padding: "12px",
+                  borderRadius: 10,
+                  background: COLORS.coral,
+                  color: "#FFF",
+                  fontWeight: 700,
+                  fontSize: 13.5,
+                  border: "none",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  marginBottom: 14,
+                  opacity: isGeneratingItinerary || !aiItineraryPrompt.trim() ? 0.7 : 1,
+                }}
+              >
+                <Bot size={16} /> {isGeneratingItinerary ? "Designing Itinerary with Gemini AI..." : "Create Itinerary with AI"}
+              </button>
+
+              {/* Generated Itinerary Output */}
+              {generatedAiItinerary && (
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: THEME.textMain }}>AI Designed Itinerary:</span>
+                    <button
+                      onClick={async () => {
+                        const success = await copyToClipboard(generatedAiItinerary);
+                        if (success) {
+                          setCopied(true);
+                          setTimeout(() => setCopied(false), 2000);
+                        }
+                      }}
+                      style={{
+                        padding: "4px 8px",
                         borderRadius: 6,
-                        background: COLORS.ocean,
-                        color: COLORS.sand,
+                        background: COLORS.profit,
+                        color: "#FFF",
                         border: "none",
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: 700,
                         cursor: "pointer",
                         display: "flex",
@@ -3287,310 +3978,289 @@ Respond with TWO parts separated by the tag "PITCH_SEPARATOR":
                         gap: 4,
                       }}
                     >
-                      <Pencil size={12} /> {user.role === "GOD" ? "Edit Password" : "Edit Permissions"}
+                      <Copy size={12} /> {copied ? "Copied!" : "Copy Itinerary"}
                     </button>
-                    {user.role !== "GOD" && (
-                      <button
-                        onClick={() => deleteUserAccount(user.id)}
-                        style={{ background: "none", border: "none", color: COLORS.coral, cursor: "pointer" }}
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    )}
                   </div>
+                  <pre
+                    style={{
+                      background: THEME.cardDeepBg,
+                      padding: 12,
+                      borderRadius: 10,
+                      border: `1px solid ${THEME.border}`,
+                      fontSize: 12,
+                      color: THEME.textMain,
+                      whiteSpace: "pre-wrap",
+                      fontFamily: "monospace",
+                      maxHeight: 280,
+                      overflowY: "auto",
+                    }}
+                  >
+                    {generatedAiItinerary}
+                  </pre>
                 </div>
-              ))}
+              )}
+            </div>
+          </div>
+        )}
+
+        {showAiDrawer && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: "rgba(0,0,0,0.6)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+              padding: 16,
+            }}
+          >
+            <div
+              style={{
+                background: THEME.cardBg,
+                borderRadius: 20,
+                padding: 24,
+                maxWidth: 600,
+                width: "100%",
+                maxHeight: "90vh",
+                overflowY: "auto",
+                border: `1px solid ${THEME.border}`,
+                boxShadow: "0 16px 40px rgba(0,0,0,0.35)",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <Bot size={22} color={COLORS.coral} />
+                  <h3 style={{ margin: 0, fontFamily: "'Fraunces', serif", fontSize: 20, color: THEME.textMain }}>
+                    AI Tour Proposal Generator
+                  </h3>
+                </div>
+                <button onClick={() => setShowAiDrawer(false)} style={{ background: "none", border: "none", color: THEME.textMuted, cursor: "pointer" }}>
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Persona Selection */}
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: THEME.textMain, marginBottom: 6 }}>
+                  Select Sales Persona Tone:
+                </label>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {AI_PERSONAS.map((p) => (
+                    <div
+                      key={p.id}
+                      onClick={() => setAiPersona(p.id)}
+                      style={{
+                        padding: "8px 12px",
+                        borderRadius: 10,
+                        border: `1px solid ${aiPersona === p.id ? COLORS.coral : THEME.border}`,
+                        background: aiPersona === p.id ? THEME.cardDeepBg : "transparent",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <div style={{ fontWeight: 700, fontSize: 13, color: THEME.textMain }}>{p.title}</div>
+                      <div style={{ fontSize: 11, color: THEME.textMuted }}>{p.description}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Language Selection */}
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: THEME.textMain, marginBottom: 4 }}>
+                  Target Proposal Language:
+                </label>
+                <select
+                  value={aiLanguage}
+                  onChange={(e) => setAiLanguage(e.target.value)}
+                  style={{ width: "100%", padding: "8px", borderRadius: 8, border: `1px solid ${THEME.border}`, fontSize: 12.5, background: "#FFF", color: "#132422" }}
+                >
+                  {AI_LANGUAGES.map((lang) => (
+                    <option key={lang} value={lang}>{lang}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* GOD Master System Instructions Editor */}
+              {isGodUser && (
+                <div style={{ marginBottom: 14, borderTop: `1px dashed ${THEME.border}`, paddingTop: 10 }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 700, color: COLORS.coral, marginBottom: 4 }}>
+                    <Key size={13} /> Master AI System Prompt Rules (GOD Only)
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={masterAiPrompt}
+                    onChange={(e) => setMasterAiPrompt(e.target.value)}
+                    style={{ width: "100%", padding: "8px", borderRadius: 8, border: `1px solid ${THEME.border}`, fontSize: 11.5, background: "#FFF", color: "#132422", boxSizing: "border-box" }}
+                  />
+                </div>
+              )}
+
+              <button
+                onClick={generateAiProposalPrompt}
+                disabled={isGeneratingAi}
+                style={{
+                  width: "100%",
+                  padding: "12px",
+                  borderRadius: 10,
+                  background: COLORS.coral,
+                  color: "#FFF",
+                  fontWeight: 700,
+                  fontSize: 13.5,
+                  border: "none",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  marginBottom: 14,
+                }}
+              >
+                <Sparkles size={16} /> {isGeneratingAi ? "Generating Proposal..." : "Generate AI Proposal"}
+              </button>
+
+              {/* Output Preview */}
+              {generatedAiProposal && (
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: THEME.textMain }}>Generated Proposal Output:</span>
+                    <button
+                      onClick={async () => {
+                        const success = await copyToClipboard(generatedAiProposal);
+                        if (success) {
+                          setCopied(true);
+                          setTimeout(() => setCopied(false), 2000);
+                        }
+                      }}
+                      style={{ padding: "4px 8px", borderRadius: 6, background: COLORS.profit, color: "#FFF", border: "none", fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+                    >
+                      <Copy size={12} /> {copied ? "Copied!" : "Copy Proposal"}
+                    </button>
+                  </div>
+                  <pre
+                    style={{
+                      background: THEME.cardDeepBg,
+                      padding: 12,
+                      borderRadius: 10,
+                      border: `1px solid ${THEME.border}`,
+                      fontSize: 12,
+                      color: THEME.textMain,
+                      whiteSpace: "pre-wrap",
+                      fontFamily: "monospace",
+                      maxHeight: 280,
+                      overflowY: "auto",
+                    }}
+                  >
+                    {generatedAiProposal}
+                  </pre>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {showWhatsappModal && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: "rgba(0,0,0,0.6)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+              padding: 16,
+            }}
+          >
+            <div
+              style={{
+                background: THEME.cardBg,
+                borderRadius: 20,
+                padding: 20,
+                maxWidth: 540,
+                width: "100%",
+                maxHeight: "85vh",
+                overflowY: "auto",
+                border: `1px solid ${THEME.border}`,
+                boxShadow: "0 16px 40px rgba(0,0,0,0.35)",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <MessageSquare size={20} color={COLORS.coral} />
+                  <h3 style={{ margin: 0, fontFamily: "'Fraunces', serif", fontSize: 18, color: THEME.textMain }}>
+                    Formatted WhatsApp Quotation
+                  </h3>
+                </div>
+                <button onClick={() => setShowWhatsappModal(false)} style={{ background: "none", border: "none", color: THEME.textMuted, cursor: "pointer" }}>
+                  <X size={18} />
+                </button>
+              </div>
+
+              <pre
+                style={{
+                  background: THEME.cardDeepBg,
+                  padding: 14,
+                  borderRadius: 12,
+                  border: `1px solid ${THEME.border}`,
+                  fontSize: 12,
+                  color: THEME.textMain,
+                  whiteSpace: "pre-wrap",
+                  fontFamily: "monospace",
+                  marginBottom: 14,
+                  maxHeight: 320,
+                  overflowY: "auto",
+                }}
+              >
+                {formattedQuotationText}
+              </pre>
+
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  onClick={async () => {
+                    const success = await copyToClipboard(formattedQuotationText);
+                    if (success) {
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    }
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: "10px",
+                    borderRadius: 8,
+                    background: COLORS.profit,
+                    color: "#FFF",
+                    fontWeight: 700,
+                    fontSize: 13,
+                    border: "none",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                  }}
+                >
+                  <Copy size={14} /> {copied ? "Copied to Clipboard!" : "Copy WhatsApp Text"}
+                </button>
+                <button
+                  onClick={() => setShowWhatsappModal(false)}
+                  style={{ padding: "10px 16px", borderRadius: 8, background: THEME.cardDeepBg, color: THEME.textMain, border: `1px solid ${THEME.border}`, fontWeight: 700, cursor: "pointer" }}
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         )}
 
       </div>
-
-      {}
-      {editingCatalogItem && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(0,0,0,0.65)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 9999,
-            padding: 16,
-          }}
-        >
-          <div
-            style={{
-              background: COLORS.sand,
-              borderRadius: 18,
-              width: "100%",
-              maxWidth: 480,
-              padding: 20,
-              boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <h3 style={{ margin: 0, fontFamily: "'Fraunces', serif", fontSize: 18, color: COLORS.ink }}>
-                Edit Vendor Item: {editingCatalogItem.name}
-              </h3>
-              <button onClick={() => setEditingCatalogItem(null)} style={{ background: "none", border: "none", cursor: "pointer" }}>
-                <X size={18} color={COLORS.muted} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveCatalogItem} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: COLORS.ink, marginBottom: 4 }}>
-                  Item Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={editingCatalogItem.name}
-                  onChange={(e) => setEditingCatalogItem({ ...editingCatalogItem, name: e.target.value })}
-                  style={{ width: "100%", padding: "7px 9px", borderRadius: 8, border: `1px solid ${COLORS.line}`, fontSize: 12, fontWeight: 600, boxSizing: "border-box" }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: COLORS.ink, marginBottom: 4 }}>
-                  Base Vendor Cost Price (IDR)
-                </label>
-                <input
-                  type="number"
-                  required
-                  value={editingCatalogItem.price}
-                  onChange={(e) => setEditingCatalogItem({ ...editingCatalogItem, price: e.target.value })}
-                  style={{ width: "100%", padding: "7px 9px", borderRadius: 8, border: `1px solid ${COLORS.line}`, fontSize: 13, fontWeight: 700, color: COLORS.ocean, boxSizing: "border-box" }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: COLORS.ink, marginBottom: 4 }}>
-                  Pricing Mode Rule
-                </label>
-                <select
-                  value={editingCatalogItem.mode || "pax"}
-                  onChange={(e) => setEditingCatalogItem({ ...editingCatalogItem, mode: e.target.value })}
-                  style={{ width: "100%", padding: "7px 9px", borderRadius: 8, border: `1px solid ${COLORS.line}`, fontSize: 12, fontWeight: 600, background: "#FFF" }}
-                >
-                  <option value="pax">Per Pax (Multiplied by total pax count)</option>
-                  <option value="unit">Shared per Unit (Vehicle/Boat/Hotel Room capacity)</option>
-                  <option value="flat">Manual Qty / Flat Rate</option>
-                  <option value="tier">Tiered Rate (Base pax max + extra surcharge)</option>
-                </select>
-              </div>
-
-              {editingCatalogItem.mode === "unit" && (
-                <div>
-                  <label style={{ display: "block", fontSize: 11.5, fontWeight: 600, color: COLORS.muted, marginBottom: 2 }}>
-                    Max Pax Capacity Per Unit:
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={editingCatalogItem.capacity || 4}
-                    onChange={(e) => setEditingCatalogItem({ ...editingCatalogItem, capacity: e.target.value })}
-                    style={{ width: 100, padding: "5px 8px", borderRadius: 6, border: `1px solid ${COLORS.line}`, fontSize: 12 }}
-                  />
-                </div>
-              )}
-
-              {editingCatalogItem.mode === "tier" && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                  <div>
-                    <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: COLORS.muted, marginBottom: 2 }}>
-                      Included Base Pax:
-                    </label>
-                    <input
-                      type="number"
-                      min={1}
-                      value={editingCatalogItem.threshold || 2}
-                      onChange={(e) => setEditingCatalogItem({ ...editingCatalogItem, threshold: e.target.value })}
-                      style={{ width: "100%", padding: "5px 8px", borderRadius: 6, border: `1px solid ${COLORS.line}`, fontSize: 12 }}
-                    />
-                  </div>
-
-                  <div>
-                    <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: COLORS.muted, marginBottom: 2 }}>
-                      Extra Surcharge / Pax:
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={editingCatalogItem.surcharge || 50000}
-                      onChange={(e) => setEditingCatalogItem({ ...editingCatalogItem, surcharge: e.target.value })}
-                      style={{ width: "100%", padding: "5px 8px", borderRadius: 6, border: `1px solid ${COLORS.line}`, fontSize: 12 }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
-                <button
-                  type="button"
-                  onClick={() => setEditingCatalogItem(null)}
-                  style={{ padding: "8px 14px", borderRadius: 8, border: `1px solid ${COLORS.line}`, background: "transparent", color: COLORS.muted, cursor: "pointer", fontSize: 12, fontWeight: 600 }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: COLORS.coral, color: "#FFF", cursor: "pointer", fontSize: 12, fontWeight: 700 }}
-                >
-                  Save Item Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {}
-      {editingUser && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(0,0,0,0.65)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 9999,
-            padding: 16,
-          }}
-        >
-          <div
-            style={{
-              background: COLORS.sand,
-              borderRadius: 18,
-              width: "100%",
-              maxWidth: 480,
-              padding: 20,
-              boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <h3 style={{ margin: 0, fontFamily: "'Fraunces', serif", fontSize: 18, color: COLORS.ink }}>
-                {editingUser.role === "GOD" ? `Edit Password: ${editingUser.name}` : `Edit Permissions: ${editingUser.name}`}
-              </h3>
-              <button onClick={() => setEditingUser(null)} style={{ background: "none", border: "none", cursor: "pointer" }}>
-                <X size={18} color={COLORS.muted} />
-              </button>
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: COLORS.ink, marginBottom: 4 }}>
-                  Assigned Password
-                </label>
-                <input
-                  type="text"
-                  value={editingUser.password || ""}
-                  onChange={(e) => setEditingUser({ ...editingUser, password: e.target.value })}
-                  style={{ width: "100%", padding: "7px 9px", borderRadius: 8, border: `1px solid ${COLORS.line}`, fontSize: 12, fontWeight: 700, boxSizing: "border-box" }}
-                />
-              </div>
-
-              {editingUser.role !== "GOD" && (
-                <>
-                  <div>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: COLORS.ink, marginBottom: 4 }}>
-                      Role Class
-                    </label>
-                    <select
-                      value={editingUser.role}
-                      onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })}
-                      style={{ width: "100%", padding: "7px 9px", borderRadius: 8, border: `1px solid ${COLORS.line}`, fontSize: 12, fontWeight: 700, background: "#FFF" }}
-                    >
-                      <option value="Staff Agent">Staff Agent</option>
-                      <option value="Freelance Sales">Freelance Sales (Simulator Only)</option>
-                      <option value="Partner Agency / B2B Reseller">Partner Agency / B2B Reseller</option>
-                      <option value="Tour Guide / Field Lead">Tour Guide / Field Lead</option>
-                      <option value="Operations & Finance">Operations & Finance</option>
-                      <option value="Admin Manager">Admin Manager</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: COLORS.ink, marginBottom: 4 }}>
-                      Minimum Enforced Profit Margin %
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={editingUser.minMargin || 0}
-                      onChange={(e) => setEditingUser({ ...editingUser, minMargin: Number(e.target.value) })}
-                      style={{ width: 100, padding: "7px 9px", borderRadius: 8, border: `1px solid ${COLORS.line}`, fontSize: 12, fontWeight: 700 }}
-                    />
-                  </div>
-
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8, background: COLORS.sandDeep, padding: 12, borderRadius: 10 }}>
-                    <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: COLORS.ink, cursor: "pointer" }}>
-                      <input
-                        type="checkbox"
-                        checked={editingUser.canAccessDashboard !== false}
-                        onChange={(e) => setEditingUser({ ...editingUser, canAccessDashboard: e.target.checked })}
-                      />
-                      <span>Allow Access to Personal Dashboard & Quote Tracking</span>
-                    </label>
-
-                    <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: COLORS.ink, cursor: "pointer" }}>
-                      <input
-                        type="checkbox"
-                        checked={!editingUser.canSeeVendorCosts}
-                        onChange={(e) => setEditingUser({ ...editingUser, canSeeVendorCosts: !e.target.checked })}
-                      />
-                      <span>Hide Vendor Costs & Internal Profit Margin</span>
-                    </label>
-
-                    <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: COLORS.ink, cursor: "pointer" }}>
-                      <input
-                        type="checkbox"
-                        checked={editingUser.canEditCatalog}
-                        onChange={(e) => setEditingUser({ ...editingUser, canEditCatalog: e.target.checked })}
-                      />
-                      <span>Can Edit Master Vendor Catalog</span>
-                    </label>
-
-                    <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: COLORS.ink, cursor: "pointer" }}>
-                      <input
-                        type="checkbox"
-                        checked={editingUser.canSeeAllDashboardQuotes}
-                        onChange={(e) => setEditingUser({ ...editingUser, canSeeAllDashboardQuotes: e.target.checked })}
-                      />
-                      <span>Can View All Staff Quotes in Dashboard</span>
-                    </label>
-                  </div>
-                </>
-              )}
-            </div>
-
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
-              <button
-                onClick={() => setEditingUser(null)}
-                style={{ padding: "8px 14px", borderRadius: 8, border: `1px solid ${COLORS.line}`, background: "transparent", color: COLORS.muted, cursor: "pointer", fontSize: 12, fontWeight: 600 }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={saveUpdatedUserPermissions}
-                style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: COLORS.coral, color: "#FFF", cursor: "pointer", fontSize: 12, fontWeight: 700 }}
-              >
-                Save Changes
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
