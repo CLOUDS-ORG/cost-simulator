@@ -1,5 +1,6 @@
 "use client"
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { supabase, supabaseConfigured } from "./lib/supabase";
 import {
   Plus,
   Minus,
@@ -273,110 +274,6 @@ const DEFAULT_PRESETS = [
   },
 ];
 
-const DEFAULT_USERS = [
-  {
-    id: "god-root",
-    username: "god",
-    password: "123",
-    email: "god@tourhq.com",
-    name: "Master God Admin",
-    role: "GOD",
-    status: "Approved",
-    minMargin: 0,
-    canSeeVendorCosts: true,
-    canEditCatalog: true,
-    canOverrideCosts: true,
-    canEditPresets: true,
-    canSeeAllDashboardQuotes: true,
-    canAccessDashboard: true,
-    createdAt: "2026-01-01",
-  },
-  {
-    id: "admin-1",
-    username: "admin",
-    password: "123",
-    email: "admin@tourhq.com",
-    name: "Senior Tour Manager",
-    role: "Admin Manager",
-    status: "Approved",
-    minMargin: 10,
-    canSeeVendorCosts: true,
-    canEditCatalog: true,
-    canOverrideCosts: true,
-    canEditPresets: true,
-    canSeeAllDashboardQuotes: true,
-    canAccessDashboard: true,
-    createdAt: "2026-02-15",
-  },
-  {
-    id: "staff-1",
-    username: "agent1",
-    password: "123",
-    email: "agent1@tourhq.com",
-    name: "Wayman Reservations",
-    role: "Staff Agent",
-    status: "Approved",
-    minMargin: 20,
-    canSeeVendorCosts: true,
-    canEditCatalog: false,
-    canOverrideCosts: false,
-    canEditPresets: false,
-    canSeeAllDashboardQuotes: false,
-    canAccessDashboard: true,
-    createdAt: "2026-03-10",
-  },
-  {
-    id: "sales-1",
-    username: "freelance1",
-    password: "123",
-    email: "freelance@tourhq.com",
-    name: "Alex Freelance Partner",
-    role: "Freelance Sales",
-    status: "Approved",
-    minMargin: 25,
-    canSeeVendorCosts: false,
-    canEditCatalog: false,
-    canOverrideCosts: false,
-    canEditPresets: false,
-    canSeeAllDashboardQuotes: false,
-    canAccessDashboard: true,
-    createdAt: "2026-04-01",
-  },
-  {
-    id: "guide-1",
-    username: "guide1",
-    password: "123",
-    email: "guide1@tourhq.com",
-    name: "Made Tour Guide Lead",
-    role: "Tour Guide / Field Lead",
-    status: "Approved",
-    minMargin: 20,
-    canSeeVendorCosts: false,
-    canEditCatalog: false,
-    canOverrideCosts: false,
-    canEditPresets: false,
-    canSeeAllDashboardQuotes: false,
-    canAccessDashboard: true,
-    createdAt: "2026-04-10",
-  },
-  {
-    id: "partner-1",
-    username: "partner1",
-    password: "123",
-    email: "partner1@agency.com",
-    name: "Bali Horizons B2B Reseller",
-    role: "Partner Agency / B2B Reseller",
-    status: "Approved",
-    minMargin: 15,
-    canSeeVendorCosts: false,
-    canEditCatalog: false,
-    canOverrideCosts: false,
-    canEditPresets: false,
-    canSeeAllDashboardQuotes: false,
-    canAccessDashboard: true,
-    createdAt: "2026-05-01",
-  },
-];
 
 const AI_PERSONAS = [
   {
@@ -520,6 +417,26 @@ const copyToClipboard = async (text) => {
   }
 };
 
+const profileToUser = (p) => ({
+  id: p.id,
+  username: p.username,
+  email: p.email,
+  name: p.name,
+  role: p.role,
+  status: p.status,
+  minMargin: Number(p.min_margin),
+  canSeeVendorCosts: p.can_see_vendor_costs,
+  canEditCatalog: p.can_edit_catalog,
+  canOverrideCosts: p.can_override_costs,
+  canEditPresets: p.can_edit_presets,
+  canSeeAllDashboardQuotes: p.can_see_all_dashboard_quotes,
+  canAccessDashboard: p.can_access_dashboard,
+  createdAt: (p.created_at || "").slice(0, 10),
+});
+
+const DEFAULT_AI_PROMPT =
+  "You are an expert, warm, and high-converting Bali & Nusa Penida tour coordinator. Create a clear, engaging tour proposal for WhatsApp.";
+
 export default function App() {
   const [themeMode, setThemeMode] = useState(() => {
     try {
@@ -570,32 +487,13 @@ export default function App() {
     };
   }, [isDark]);
 
-  const [activityLogs, setActivityLogs] = useState(() => {
-    try {
-      const saved = localStorage.getItem("tourhq_activity_logs_v3");
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
-
-  const [usersList, setUsersList] = useState(() => {
-    try {
-      const saved = localStorage.getItem("system_users_v8");
-      return saved ? JSON.parse(saved) : DEFAULT_USERS;
-    } catch (e) {
-      return DEFAULT_USERS;
-    }
-  });
-
-  const [currentUser, setCurrentUser] = useState(() => {
-    try {
-      const saved = localStorage.getItem("active_user_session_v8");
-      return saved ? JSON.parse(saved) : null;
-    } catch (e) {
-      return null;
-    }
-  });
+  const [activityLogs, setActivityLogs] = useState([]);
+  const [usersList, setUsersList] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authReady, setAuthReady] = useState(!supabaseConfigured);
+  const [authBusy, setAuthBusy] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const lastSynced = useRef({ catalog: null, presets: null, ai_prompt: null });
 
   const [impersonatedUserId, setImpersonatedUserId] = useState(null);
   const [currentPage, setCurrentPage] = useState("simulator");
@@ -623,7 +521,6 @@ export default function App() {
   const [authForm, setAuthForm] = useState({
     username: "",
     password: "",
-    godMasterKey: "",
   });
   const [authNotice, setAuthNotice] = useState({ type: "", text: "" });
 
@@ -644,41 +541,9 @@ export default function App() {
   const [userNotice, setUserNotice] = useState({ type: "", text: "" });
   const [editingUser, setEditingUser] = useState(null);
 
-  const [supabaseConfig, setSupabaseConfig] = useState(() => {
-    try {
-      const saved = localStorage.getItem("supabase_cloud_config_v1");
-      return saved ? JSON.parse(saved) : { url: "", apiKey: "", autoSync: true };
-    } catch (e) {
-      return { url: "", apiKey: "", autoSync: true };
-    }
-  });
-
-  const [catalog, setCatalog] = useState(() => {
-    try {
-      const saved = localStorage.getItem("custom_catalog_v8");
-      return saved ? JSON.parse(saved) : DEFAULT_CATALOG;
-    } catch (e) {
-      return DEFAULT_CATALOG;
-    }
-  });
-
-  const [presets, setPresets] = useState(() => {
-    try {
-      const saved = localStorage.getItem("custom_presets_v8");
-      return saved ? JSON.parse(saved) : DEFAULT_PRESETS;
-    } catch (e) {
-      return DEFAULT_PRESETS;
-    }
-  });
-
-  const [savedHistory, setSavedHistory] = useState(() => {
-    try {
-      const saved = localStorage.getItem("saved_quote_history_v8");
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
+  const [catalog, setCatalog] = useState(DEFAULT_CATALOG);
+  const [presets, setPresets] = useState(DEFAULT_PRESETS);
+  const [savedHistory, setSavedHistory] = useState([]);
 
   const [showAiDrawer, setShowAiDrawer] = useState(false);
   const [showWhatsappModal, setShowWhatsappModal] = useState(false);
@@ -688,22 +553,12 @@ export default function App() {
   const [isGeneratingItinerary, setIsGeneratingItinerary] = useState(false);
   const [aiPersona, setAiPersona] = useState("advisor");
   const [aiLanguage, setAiLanguage] = useState("English");
-  const [masterAiPrompt, setMasterAiPrompt] = useState(() => {
-    try {
-      const saved = localStorage.getItem("god_master_ai_prompt_v1");
-      return (
-        saved ||
-        "You are an expert, warm, and high-converting Bali & Nusa Penida tour coordinator. Create a clear, engaging tour proposal for WhatsApp."
-      );
-    } catch (e) {
-      return "You are an expert, warm, and high-converting Bali & Nusa Penida tour coordinator.";
-    }
-  });
+  const [masterAiPrompt, setMasterAiPrompt] = useState(DEFAULT_AI_PROMPT);
   const [generatedAiProposal, setGeneratedAiProposal] = useState("");
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
 
   const logUserActivity = useCallback((actionDescription, quoteId = null) => {
-    if (!currentUser) return;
+    if (!currentUser || !supabase) return;
     const logEntry = {
       id: `log-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       timestamp: new Date().toISOString(),
@@ -713,61 +568,138 @@ export default function App() {
       action: actionDescription,
       quoteId: quoteId || "",
     };
+    setActivityLogs((prev) => [logEntry, ...prev].slice(0, 50));
+    supabase
+      .from("activity_logs")
+      .insert({ data: logEntry })
+      .then(({ error }) => {
+        if (error) console.error("Activity log failed:", error.message);
+      });
+  }, [currentUser]);
 
-    setActivityLogs((prev) => {
-      const updated = [logEntry, ...prev].slice(0, 50);
-      try {
-        localStorage.setItem("tourhq_activity_logs_v3", JSON.stringify(updated));
-      } catch (e) {
-        console.error(e);
-      }
-      return updated;
+  const fetchProfile = useCallback(async (userId) => {
+    const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
+    if (error || !data || data.status !== "Approved") return null;
+    return profileToUser(data);
+  }, []);
+
+  // Loads everything shared between team members from the cloud database.
+  const loadSharedData = useCallback(async (user) => {
+    if (!supabase || !user) return;
+    const isGod = user.role === "GOD";
+    const [stateRes, quotesRes, usersRes, logsRes] = await Promise.all([
+      supabase.from("app_state").select("key,value"),
+      supabase.from("quotes").select("data").order("updated_at", { ascending: false }).limit(500),
+      isGod ? supabase.from("profiles").select("*").order("created_at") : Promise.resolve({ data: null }),
+      isGod
+        ? supabase.from("activity_logs").select("data").order("created_at", { ascending: false }).limit(50)
+        : Promise.resolve({ data: null }),
+    ]);
+
+    const remote = {};
+    (stateRes.data || []).forEach((row) => {
+      remote[row.key] = row.value;
     });
-  }, [currentUser]);
+    const nextCatalog = remote.catalog ?? DEFAULT_CATALOG;
+    const nextPresets = remote.presets ?? DEFAULT_PRESETS;
+    const nextPrompt = remote.ai_prompt ?? DEFAULT_AI_PROMPT;
+    lastSynced.current = {
+      catalog: JSON.stringify(nextCatalog),
+      presets: JSON.stringify(nextPresets),
+      ai_prompt: JSON.stringify(nextPrompt),
+    };
+    setCatalog(nextCatalog);
+    setPresets(nextPresets);
+    setMasterAiPrompt(nextPrompt);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem("system_users_v8", JSON.stringify(usersList));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [usersList]);
+    if (!quotesRes.error) setSavedHistory((quotesRes.data || []).map((r) => r.data));
+    setUsersList(usersRes.data ? usersRes.data.map(profileToUser) : [user]);
+    if (logsRes.data) setActivityLogs(logsRes.data.map((r) => r.data));
+    setDataLoaded(true);
+  }, []);
 
+  // Restore an existing sign-in when the page opens.
   useEffect(() => {
-    try {
-      if (currentUser) {
-        localStorage.setItem("active_user_session_v8", JSON.stringify(currentUser));
-      } else {
-        localStorage.removeItem("active_user_session_v8");
+    if (!supabase) return undefined;
+    let active = true;
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data?.session) {
+        const user = await fetchProfile(data.session.user.id);
+        if (!active) return;
+        if (user) {
+          setCurrentUser(user);
+          await loadSharedData(user);
+        } else {
+          await supabase.auth.signOut();
+        }
       }
-    } catch (e) {
-      console.error(e);
-    }
-  }, [currentUser]);
+      if (active) setAuthReady(true);
+    })();
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") {
+        setCurrentUser(null);
+        setDataLoaded(false);
+      }
+    });
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
+  }, [fetchProfile, loadSharedData]);
+
+  // Keep every team member's screen up to date.
+  useEffect(() => {
+    if (!currentUser || !dataLoaded) return undefined;
+    const refresh = () => {
+      if (document.visibilityState === "visible") loadSharedData(currentUser);
+    };
+    const timer = setInterval(refresh, 60000);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [currentUser, dataLoaded, loadSharedData]);
+
+  const syncSharedState = useCallback(
+    async (key, value) => {
+      if (!supabase || !currentUser) return;
+      const json = JSON.stringify(value);
+      if (lastSynced.current[key] === json) return;
+      lastSynced.current[key] = json;
+      const { error } = await supabase
+        .from("app_state")
+        .upsert({ key, value, updated_by: currentUser.id, updated_at: new Date().toISOString() });
+      if (error) {
+        console.error(`Could not save ${key}:`, error.message);
+        lastSynced.current[key] = null;
+      }
+    },
+    [currentUser]
+  );
+
+  const isRealGod = currentUser?.role === "GOD";
 
   useEffect(() => {
-    try {
-      localStorage.setItem("saved_quote_history_v8", JSON.stringify(savedHistory));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [savedHistory]);
+    if (dataLoaded && (isRealGod || currentUser?.canEditCatalog)) syncSharedState("catalog", catalog);
+  }, [catalog, dataLoaded, isRealGod, currentUser, syncSharedState]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem("custom_catalog_v8", JSON.stringify(catalog));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [catalog]);
+    if (dataLoaded && (isRealGod || currentUser?.canEditPresets)) syncSharedState("presets", presets);
+  }, [presets, dataLoaded, isRealGod, currentUser, syncSharedState]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem("custom_presets_v8", JSON.stringify(presets));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [presets]);
+    if (dataLoaded && isRealGod) syncSharedState("ai_prompt", masterAiPrompt);
+  }, [masterAiPrompt, dataLoaded, isRealGod, syncSharedState]);
+
+  const persistQuote = useCallback(async (record) => {
+    if (!supabase) return;
+    const { error } = await supabase
+      .from("quotes")
+      .upsert({ id: record.id, data: record, updated_at: new Date().toISOString() });
+    if (error) console.error("Could not save quote:", error.message);
+  }, []);
 
   const createDefaultQuoteSession = (titleOverride = null) => {
     const minM = currentUser?.minMargin ?? 25;
@@ -966,57 +898,63 @@ export default function App() {
     logUserActivity(`Removed item "${itemName}" from tour itinerary`, currentQuote?.id);
   };
 
-  const handleLoginSubmit = (e) => {
-    e.preventDefault();
-    setAuthNotice({ type: "", text: "" });
-
-    if (authForm.godMasterKey.trim() === "GOD2026") {
-      const godUser = {
-        id: "god-master",
-        username: authForm.username || "god",
-        password: "123",
-        name: "Master God Admin",
-        role: "GOD",
-        status: "Approved",
-        email: "god@tourhq.com",
-        minMargin: 0,
-        canSeeVendorCosts: true,
-        canEditCatalog: true,
-        canOverrideCosts: true,
-        canEditPresets: true,
-        canSeeAllDashboardQuotes: true,
-        canAccessDashboard: true,
-      };
-      setCurrentUser(godUser);
-      setAuthNotice({ type: "success", text: "Welcome Master GOD! Unrestricted permissions active." });
-      setCurrentPage("simulator");
-      logUserActivity("Logged in via GOD Master Key");
-      return;
-    }
-
-    const found = usersList.find(
-      (u) =>
-        u.username.toLowerCase() === authForm.username.trim().toLowerCase() ||
-        u.email.toLowerCase() === authForm.username.trim().toLowerCase()
-    );
-
-    if (!found) {
-      setAuthNotice({ type: "error", text: "Account not found. Contact GOD/Admin to set up your account." });
-      return;
-    }
-
-    if (found.password && found.password !== authForm.password) {
-      setAuthNotice({ type: "error", text: "Invalid password. Contact GOD Admin to reset your password." });
-      return;
-    }
-
-    setCurrentUser(found);
-    setAuthNotice({ type: "success", text: `Logged in as ${found.name} (${found.role})` });
-    setCurrentPage("simulator");
-    logUserActivity(`Logged in as ${found.username} (${found.role})`);
+  const adminRequest = async (method, body) => {
+    const { data } = await supabase.auth.getSession();
+    const token = data?.session?.access_token;
+    const res = await fetch("/api/admin/users", {
+      method,
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(payload.error || "Request failed.");
+    return payload;
   };
 
-  const handleGodCreateUser = (e) => {
+  const handleLoginSubmit = async (e) => {
+    e.preventDefault();
+    setAuthNotice({ type: "", text: "" });
+    if (!supabase) {
+      setAuthNotice({ type: "error", text: "The app is not connected to its database yet." });
+      return;
+    }
+    const identifier = authForm.username.trim().toLowerCase();
+    const email = identifier.includes("@") ? identifier : `${identifier}@tourhq.com`;
+
+    setAuthBusy(true);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password: authForm.password });
+      if (error || !data?.user) {
+        setAuthNotice({ type: "error", text: "Invalid username or password." });
+        return;
+      }
+      const user = await fetchProfile(data.user.id);
+      if (!user) {
+        await supabase.auth.signOut();
+        setAuthNotice({ type: "error", text: "This account is not active. Please contact your administrator." });
+        return;
+      }
+      setCurrentUser(user);
+      await loadSharedData(user);
+      setAuthForm({ username: "", password: "" });
+      setCurrentPage("simulator");
+      supabase.from("activity_logs").insert({
+        data: {
+          id: `log-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          userName: user.name,
+          username: user.username,
+          role: user.role,
+          action: `Logged in as ${user.username} (${user.role})`,
+          quoteId: "",
+        },
+      }).then(() => {});
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const handleGodCreateUser = async (e) => {
     e.preventDefault();
     setUserNotice({ type: "", text: "" });
 
@@ -1025,67 +963,67 @@ export default function App() {
       return;
     }
 
-    const existing = usersList.find(
-      (u) =>
-        u.username.toLowerCase() === newUserForm.username.trim().toLowerCase() ||
-        (newUserForm.email && u.email.toLowerCase() === newUserForm.email.trim().toLowerCase())
-    );
-
-    if (existing) {
-      setUserNotice({ type: "error", text: "Username or Email already exists in the system." });
-      return;
+    try {
+      const { user: createdUser } = await adminRequest("POST", {
+        ...newUserForm,
+        minMargin: Number(newUserForm.minMargin) || 0,
+      });
+      setUsersList((prev) => [...prev, createdUser]);
+      setUserNotice({ type: "success", text: `Account for "${createdUser.name}" created. They can sign in right away.` });
+      logUserActivity(`GOD created new account: ${createdUser.username} (${createdUser.role}) with min margin ${createdUser.minMargin}%`);
+      setNewUserForm({
+        username: "",
+        password: "",
+        name: "",
+        email: "",
+        role: "Staff Agent",
+        minMargin: 20,
+        canSeeVendorCosts: true,
+        canEditCatalog: false,
+        canOverrideCosts: false,
+        canEditPresets: false,
+        canSeeAllDashboardQuotes: false,
+        canAccessDashboard: true,
+      });
+    } catch (err) {
+      setUserNotice({ type: "error", text: err.message });
     }
-
-    const isFreelance = newUserForm.role === "Freelance Sales" || newUserForm.role === "Partner Agency / B2B Reseller";
-
-    const createdUser = {
-      id: `user-${Date.now()}`,
-      username: newUserForm.username.trim(),
-      password: newUserForm.password.trim(),
-      name: newUserForm.name.trim(),
-      email: newUserForm.email.trim() || `${newUserForm.username.trim()}@tourhq.com`,
-      role: newUserForm.role,
-      status: "Approved",
-      minMargin: Number(newUserForm.minMargin) || 0,
-      canSeeVendorCosts: isFreelance ? false : newUserForm.canSeeVendorCosts,
-      canEditCatalog: isFreelance ? false : newUserForm.canEditCatalog,
-      canOverrideCosts: isFreelance ? false : newUserForm.canOverrideCosts,
-      canEditPresets: isFreelance ? false : newUserForm.canEditPresets,
-      canSeeAllDashboardQuotes: isFreelance ? false : newUserForm.canSeeAllDashboardQuotes,
-      canAccessDashboard: newUserForm.canAccessDashboard !== false,
-      createdAt: new Date().toISOString().split("T")[0],
-    };
-
-    setUsersList((prev) => [...prev, createdUser]);
-    setUserNotice({ type: "success", text: `Account for "${createdUser.name}" created and synced!` });
-    logUserActivity(`GOD created new account: ${createdUser.username} (${createdUser.role}) with min margin ${createdUser.minMargin}%`);
-
-    setNewUserForm({
-      username: "",
-      password: "",
-      name: "",
-      email: "",
-      role: "Staff Agent",
-      minMargin: 20,
-      canSeeVendorCosts: true,
-      canEditCatalog: false,
-      canOverrideCosts: false,
-      canEditPresets: false,
-      canSeeAllDashboardQuotes: false,
-      canAccessDashboard: true,
-    });
   };
 
-  const deleteUserAccount = (userId) => {
+  const deleteUserAccount = async (userId) => {
     const target = usersList.find((u) => u.id === userId);
-    setUsersList((prev) => prev.filter((u) => u.id !== userId));
-    if (target) logUserActivity(`GOD deleted user account: ${target.username}`);
+    if (!window.confirm(`Delete the account "${target?.username || ""}"? This cannot be undone.`)) return;
+    try {
+      await adminRequest("DELETE", { id: userId });
+      setUsersList((prev) => prev.filter((u) => u.id !== userId));
+      if (target) logUserActivity(`GOD deleted user account: ${target.username}`);
+    } catch (err) {
+      setUserNotice({ type: "error", text: err.message });
+    }
   };
 
-  const handleLogout = () => {
+  const resetUserPassword = async (user) => {
+    const next = window.prompt(`New password for "${user.username}" (at least 8 characters):`);
+    if (next === null) return;
+    try {
+      await adminRequest("PATCH", { id: user.id, password: next });
+      setUserNotice({ type: "success", text: `Password for "${user.username}" was changed.` });
+      logUserActivity(`GOD reset password for: ${user.username}`);
+    } catch (err) {
+      setUserNotice({ type: "error", text: err.message });
+    }
+  };
+
+  const handleLogout = async () => {
     logUserActivity("Logged out");
-    setCurrentUser(null);
+    setImpersonatedUserId(null);
     setAuthNotice({ type: "", text: "" });
+    if (supabase) await supabase.auth.signOut();
+    setCurrentUser(null);
+    setDataLoaded(false);
+    setSavedHistory([]);
+    setUsersList([]);
+    setActivityLogs([]);
   };
 
   const loadQuoteById = (targetId) => {
@@ -1574,6 +1512,7 @@ Use markdown formatting and engaging travel emojis.
 
     updateCurrentQuote({ status: statusToSave, confirmedAt: record.confirmedAt });
 
+    persistQuote(record);
     setSavedHistory((prev) => {
       const existingIdx = prev.findIndex((item) => item.id === record.id);
       if (existingIdx >= 0) {
@@ -1590,6 +1529,14 @@ Use markdown formatting and engaging travel emojis.
   };
 
   const updateQuoteStatusInDashboard = (quoteId, newStatus) => {
+    const existing = savedHistory.find((item) => item.id === quoteId);
+    if (existing) {
+      persistQuote({
+        ...existing,
+        status: newStatus,
+        confirmedAt: newStatus === "Confirmed" ? new Date().toISOString() : existing.confirmedAt,
+      });
+    }
     setSavedHistory((prev) =>
       prev.map((item) => {
         if (item.id === quoteId) {
@@ -1640,6 +1587,14 @@ Use markdown formatting and engaging travel emojis.
     justifyContent: "center",
     cursor: "pointer",
   });
+
+  if (!authReady) {
+    return (
+      <div style={{ background: THEME.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: THEME.textMuted, fontFamily: "'Inter', sans-serif", fontSize: 14 }}>
+        Loading…
+      </div>
+    );
+  }
 
   if (!currentUser) {
     return (
@@ -1698,7 +1653,7 @@ Use markdown formatting and engaging travel emojis.
               Tour HQ Portal
             </h2>
             <p style={{ margin: "4px 0 0", fontSize: 13, color: THEME.textMuted }}>
-              Sign in with your assigned team account
+              Sign in to continue
             </p>
           </div>
 
@@ -1730,7 +1685,8 @@ Use markdown formatting and engaging travel emojis.
               <input
                 type="text"
                 required
-                placeholder="e.g. god, admin, agent1, freelance1"
+                placeholder="Enter your username or email"
+                autoComplete="username"
                 value={authForm.username}
                 onChange={(e) => setAuthForm({ ...authForm, username: e.target.value })}
                 style={{
@@ -1748,10 +1704,12 @@ Use markdown formatting and engaging travel emojis.
 
             <div>
               <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: THEME.textMain, marginBottom: 4 }}>
-                Assigned Password
+                Password
               </label>
               <input
                 type="password"
+                required
+                autoComplete="current-password"
                 placeholder="••••••••"
                 value={authForm.password}
                 onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
@@ -1768,30 +1726,9 @@ Use markdown formatting and engaging travel emojis.
               />
             </div>
 
-            <div style={{ borderTop: `1px dashed ${THEME.border}`, paddingTop: 10, marginTop: 4 }}>
-              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 700, color: COLORS.coral, marginBottom: 4 }}>
-                <Key size={13} /> GOD Master Bypass Passkey
-              </label>
-              <input
-                type="password"
-                placeholder="Enter GOD Bypass Key (GOD2026)"
-                value={authForm.godMasterKey}
-                onChange={(e) => setAuthForm({ ...authForm, godMasterKey: e.target.value })}
-                style={{
-                  width: "100%",
-                  padding: "8px 10px",
-                  borderRadius: 8,
-                  border: `1px solid ${COLORS.coralSoft}`,
-                  fontSize: 12,
-                  boxSizing: "border-box",
-                  background: "#FFFFFF",
-                  color: "#132422",
-                }}
-              />
-            </div>
-
             <button
               type="submit"
+              disabled={authBusy}
               style={{
                 marginTop: 8,
                 padding: "12px",
@@ -1808,7 +1745,7 @@ Use markdown formatting and engaging travel emojis.
                 gap: 8,
               }}
             >
-              Sign In to Headquarters
+              {authBusy ? "Signing in…" : "Sign In"}
             </button>
           </form>
         </div>
@@ -3583,36 +3520,6 @@ Use markdown formatting and engaging travel emojis.
               </div>
             </div>
 
-            {/* Supabase Cloud Sync Settings Panel */}
-            <div style={{ background: COLORS.oceanLight, borderRadius: 14, padding: 14, marginBottom: 18, border: `1px solid ${COLORS.line}` }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#F4EEDD", fontWeight: 700, fontSize: 13.5, marginBottom: 8 }}>
-                <Cloud size={16} color="#FFD166" />
-                <span>Supabase Cloud Database Settings (GOD Only)</span>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
-                <div>
-                  <label style={{ display: "block", fontSize: 11, color: "#A3C2BD", fontWeight: 600, marginBottom: 2 }}>Supabase Project URL</label>
-                  <input
-                    type="text"
-                    placeholder="https://xyz.supabase.co"
-                    value={supabaseConfig.url}
-                    onChange={(e) => setSupabaseConfig({ ...supabaseConfig, url: e.target.value })}
-                    style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: `1px solid ${COLORS.line}`, fontSize: 11.5, background: "#FFF", color: COLORS.ink, boxSizing: "border-box" }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: "block", fontSize: 11, color: "#A3C2BD", fontWeight: 600, marginBottom: 2 }}>Supabase Anon API Key</label>
-                  <input
-                    type="password"
-                    placeholder="eyJhbGciOi..."
-                    value={supabaseConfig.apiKey}
-                    onChange={(e) => setSupabaseConfig({ ...supabaseConfig, apiKey: e.target.value })}
-                    style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: `1px solid ${COLORS.line}`, fontSize: 11.5, background: "#FFF", color: COLORS.ink, boxSizing: "border-box" }}
-                  />
-                </div>
-              </div>
-            </div>
-
             {/* Account Registration Form */}
             <div style={{ background: THEME.cardDeepBg, borderRadius: 14, padding: 16, marginBottom: 20, border: `1px solid ${THEME.border}` }}>
               <h3 style={{ margin: "0 0 10px", fontSize: 14, color: THEME.textMain, display: "flex", alignItems: "center", gap: 6 }}>
@@ -3811,6 +3718,12 @@ Use markdown formatting and engaging travel emojis.
 
                   {isGodUser && user.id !== currentUser.id && (
                     <div style={{ display: "flex", gap: 6 }}>
+                      <button
+                        onClick={() => resetUserPassword(user)}
+                        style={{ padding: "4px 8px", borderRadius: 6, background: COLORS.oceanLight, color: "#F4EEDD", border: "none", fontSize: 11.5, fontWeight: 700, cursor: "pointer" }}
+                      >
+                        Reset Password
+                      </button>
                       <button
                         onClick={() => setEditingUser(user)}
                         style={{ padding: "4px 8px", borderRadius: 6, background: COLORS.oceanLight, color: "#F4EEDD", border: "none", fontSize: 11.5, fontWeight: 700, cursor: "pointer" }}
