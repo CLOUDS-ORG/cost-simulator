@@ -1338,8 +1338,9 @@ export default function App() {
     setGeneratedAiProposal("✨ Connecting to Gemini AI to generate custom proposal...");
 
     try {
-      const apiKey = "";
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+      const apiUrl = "/api/ai";
+      const { data: sessionData } = await supabase.auth.getSession();
+      const aiToken = sessionData?.session?.access_token || "";
       const personaObj = AI_PERSONAS.find((p) => p.id === aiPersona);
 
       const promptText = `
@@ -1379,7 +1380,7 @@ Write an enticing, structured, high-converting WhatsApp proposal using appropria
 
       const res = await fetch(apiUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${aiToken}` },
         body: JSON.stringify(payload),
       });
 
@@ -1436,8 +1437,9 @@ Write an enticing, structured, high-converting WhatsApp proposal using appropria
     setGeneratedAiItinerary("✨ Gemini AI is designing your custom tour itinerary...");
 
     try {
-      const apiKey = "";
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+      const apiUrl = "/api/ai";
+      const { data: sessionData } = await supabase.auth.getSession();
+      const aiToken = sessionData?.session?.access_token || "";
 
       const availableItems = catalog
         .flatMap((c) => c.items.map((i) => `${i.name} (${c.title})`))
@@ -1472,7 +1474,7 @@ Use markdown formatting and engaging travel emojis.
 
       const res = await fetch(apiUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${aiToken}` },
         body: JSON.stringify(payload),
       });
 
