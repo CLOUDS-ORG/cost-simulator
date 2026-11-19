@@ -1335,7 +1335,7 @@ export default function App() {
 
   const generateAiProposalPrompt = async () => {
     setIsGeneratingAi(true);
-    setGeneratedAiProposal("✨ Connecting to Gemini AI to generate custom proposal...");
+    setGeneratedAiProposal("✨ Connecting to Claude AI to generate custom proposal...");
 
     try {
       const apiUrl = "/api/ai";
@@ -1372,10 +1372,8 @@ Write an enticing, structured, high-converting WhatsApp proposal using appropria
 `;
 
       const payload = {
-        contents: [{ parts: [{ text: promptText }] }],
-        systemInstruction: {
-          parts: [{ text: "You are an expert, warm, and high-converting Bali & Nusa Penida tour coordinator." }]
-        }
+        prompt: promptText,
+        system: "You are an expert, warm, and high-converting Bali & Nusa Penida tour coordinator.",
       };
 
       const res = await fetch(apiUrl, {
@@ -1385,11 +1383,11 @@ Write an enticing, structured, high-converting WhatsApp proposal using appropria
       });
 
       const data = await res.json();
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      const text = data?.text;
 
       if (text) {
         setGeneratedAiProposal(text);
-        logUserActivity(`Generated Live Gemini AI Proposal (${aiPersona})`, currentQuote?.id);
+        logUserActivity(`Generated Live Claude AI Proposal (${aiPersona})`, currentQuote?.id);
       } else {
         throw new Error("Empty response");
       }
@@ -1431,10 +1429,10 @@ Write an enticing, structured, high-converting WhatsApp proposal using appropria
     }
   };
 
-  const generateAiItineraryWithGemini = async () => {
+  const generateAiItineraryWithClaude = async () => {
     if (!aiItineraryPrompt.trim()) return;
     setIsGeneratingItinerary(true);
-    setGeneratedAiItinerary("✨ Gemini AI is designing your custom tour itinerary...");
+    setGeneratedAiItinerary("✨ Claude AI is designing your custom tour itinerary...");
 
     try {
       const apiUrl = "/api/ai";
@@ -1462,14 +1460,9 @@ Use markdown formatting and engaging travel emojis.
 `;
 
       const payload = {
-        contents: [{ parts: [{ text: promptText }] }],
-        systemInstruction: {
-          parts: [
-            {
-              text: "You are a master Bali & Nusa Penida tour architect. Create vivid, realistic, high-value tour itineraries optimized for guest satisfaction and smooth logistics.",
-            },
-          ],
-        },
+        prompt: promptText,
+        system:
+          "You are a master Bali & Nusa Penida tour architect. Create vivid, realistic, high-value tour itineraries optimized for guest satisfaction and smooth logistics.",
       };
 
       const res = await fetch(apiUrl, {
@@ -1479,7 +1472,7 @@ Use markdown formatting and engaging travel emojis.
       });
 
       const data = await res.json();
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      const text = data?.text;
 
       if (text) {
         setGeneratedAiItinerary(text);
@@ -3779,7 +3772,7 @@ Use markdown formatting and engaging travel emojis.
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <Sparkles size={22} color={COLORS.coral} />
                   <h3 style={{ margin: 0, fontFamily: "'Fraunces', serif", fontSize: 20, color: THEME.textMain }}>
-                    Gemini AI Itinerary Creator
+                    Claude AI Itinerary Creator
                   </h3>
                 </div>
                 <button onClick={() => setShowAiItineraryModal(false)} style={{ background: "none", border: "none", color: THEME.textMuted, cursor: "pointer" }}>
@@ -3843,7 +3836,7 @@ Use markdown formatting and engaging travel emojis.
               </div>
 
               <button
-                onClick={generateAiItineraryWithGemini}
+                onClick={generateAiItineraryWithClaude}
                 disabled={isGeneratingItinerary || !aiItineraryPrompt.trim()}
                 style={{
                   width: "100%",
@@ -3863,7 +3856,7 @@ Use markdown formatting and engaging travel emojis.
                   opacity: isGeneratingItinerary || !aiItineraryPrompt.trim() ? 0.7 : 1,
                 }}
               >
-                <Bot size={16} /> {isGeneratingItinerary ? "Designing Itinerary with Gemini AI..." : "Create Itinerary with AI"}
+                <Bot size={16} /> {isGeneratingItinerary ? "Designing Itinerary with Claude AI..." : "Create Itinerary with AI"}
               </button>
 
               {/* Generated Itinerary Output */}
