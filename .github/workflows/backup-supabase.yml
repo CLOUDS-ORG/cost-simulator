@@ -1,0 +1,35 @@
+# Daily encrypted backup of the Supabase data (profiles, catalog, quotes, logs).
+# The repository is public, so the file is encrypted before it is uploaded.
+# Needs two repository secrets: SUPABASE_SERVICE_ROLE_KEY and BACKUP_PASSPHRASE.
+name: Backup Supabase
+
+on:
+  schedule:
+    - cron: "41 18 * * *"
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Export data
+        env:
+          SUPABASE_URL: https://enrnlkndvvkqnfiqnjhn.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/backup.mjs backup.json
+      - name: Encrypt
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          test -n "$BACKUP_PASSPHRASE"
+          openssl enc -aes-256-cbc -pbkdf2 -salt -pass env:BACKUP_PASSPHRASE -in backup.json -out backup.json.enc
+          rm backup.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: supabase-backup-${{ github.run_id }}
+          path: backup.json.enc
+          retention-days: 30
