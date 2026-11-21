@@ -34,3 +34,9 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Backups
+
+`.github/workflows/backup-supabase.yml` exports the data daily as an encrypted artifact (kept 30 days).
+Restore: download the artifact, then `openssl enc -d -aes-256-cbc -pbkdf2 -in backup.json.enc -out backup.json`.
+Password hashes are not exported; after a restore, accounts need a password reset.
