@@ -687,6 +687,8 @@ export default function App() {
   });
   const [userNotice, setUserNotice] = useState({ type: "", text: "" });
   const [editingUser, setEditingUser] = useState(null);
+  const [editDraft, setEditDraft] = useState(null);
+  const [editBusy, setEditBusy] = useState(false);
 
   const [catalog, setCatalog] = useState(DEFAULT_CATALOG);
   const [presets, setPresets] = useState(DEFAULT_PRESETS);
@@ -907,6 +909,7 @@ export default function App() {
   const [customItemForm, setCustomItemForm] = useState({ name: "", price: "", mode: "flat" });
 
   const [editingPreset, setEditingPreset] = useState(null);
+  const [presetQuery, setPresetQuery] = useState("");
   const [newPresetForm, setNewPresetForm] = useState({ label: "", picks: [] });
 
   const currentQuote = quotes[activeQuoteIndex] || quotes[0];
@@ -1163,6 +1166,45 @@ export default function App() {
     }
   };
 
+  const openEditRules = (user) => {
+    setEditingUser(user);
+    setEditDraft({
+      name: user.name || "",
+      role: user.role,
+      minMargin: user.minMargin,
+      canSeeVendorCosts: !!user.canSeeVendorCosts,
+      canEditCatalog: !!user.canEditCatalog,
+      canOverrideCosts: !!user.canOverrideCosts,
+      canEditPresets: !!user.canEditPresets,
+      canSeeAllDashboardQuotes: !!user.canSeeAllDashboardQuotes,
+      canAccessDashboard: user.canAccessDashboard !== false,
+    });
+  };
+
+  const closeEditRules = () => {
+    setEditingUser(null);
+    setEditDraft(null);
+  };
+
+  const saveUserRules = async () => {
+    if (!editingUser || !editDraft) return;
+    setEditBusy(true);
+    try {
+      const { user: updated } = await adminRequest("PATCH", {
+        id: editingUser.id,
+        rules: { ...editDraft, minMargin: Number(editDraft.minMargin) },
+      });
+      setUsersList((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
+      setUserNotice({ type: "success", text: `Rules for "${updated.username}" were updated.` });
+      logUserActivity(`GOD edited rules for: ${updated.username} (${updated.role}, min margin ${updated.minMargin}%)`);
+      closeEditRules();
+    } catch (err) {
+      setUserNotice({ type: "error", text: err.message });
+    } finally {
+      setEditBusy(false);
+    }
+  };
+
   const resetUserPassword = async (user) => {
     const next = window.prompt(`New password for "${user.username}" (at least 8 characters):`);
     if (next === null) return;
@@ -1303,6 +1345,7 @@ export default function App() {
       prev.map((p) => (p.id === presetToSave.id ? presetToSave : p))
     );
     logUserActivity(`Updated Package Shortcut "${presetToSave.label}"`);
+    setPresetQuery("");
     setEditingPreset(null);
   };
 
@@ -1398,6 +1441,20 @@ export default function App() {
       }))
       .filter((cat) => cat.items.length > 0);
   }, [query, catalog]);
+
+  // Vendor list inside the Edit Package Shortcut popup: match item name or category title.
+  const presetFilteredCatalog = useMemo(() => {
+    const q = presetQuery.trim().toLowerCase();
+    if (!q) return catalog;
+    return catalog
+      .map((cat) => ({
+        ...cat,
+        items: cat.title.toLowerCase().includes(q)
+          ? cat.items
+          : cat.items.filter((i) => i.name.toLowerCase().includes(q)),
+      }))
+      .filter((cat) => cat.items.length > 0);
+  }, [presetQuery, catalog]);
 
   const handleSaveCatalogItem = (updatedItem) => {
     setCatalog((prev) =>
@@ -3301,7 +3358,7 @@ Write an enticing, structured, high-converting WhatsApp proposal using appropria
 
                     <div style={{ display: "flex", gap: 6 }}>
                       <button
-                        onClick={() => setEditingPreset(p)}
+                        onClick={() => { setPresetQuery(""); setEditingPreset(p); }}
                         style={{ padding: "4px 8px", borderRadius: 6, background: COLORS.oceanLight, color: "#F4EEDD", border: "none", fontSize: 11.5, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
                       >
                         <Pencil size={12} /> Edit Picks
@@ -3490,10 +3547,33 @@ Write an enticing, structured, high-converting WhatsApp proposal using appropria
 
                     <div>
                       <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: THEME.textMain, marginBottom: 6 }}>
-                        Select Vendor Items to Include in Preset:
+                        Select Vendor Items to Include in Preset ({editingPreset.picks.length} selected):
                       </label>
+                      <div style={{ position: "relative", marginBottom: 8 }}>
+                        <Search size={14} color="#6B8782" style={{ position: "absolute", left: 10, top: 10 }} />
+                        <input
+                          type="text"
+                          value={presetQuery}
+                          onChange={(e) => setPresetQuery(e.target.value)}
+                          placeholder="Search vendor or category (e.g. Arjuna, boat, lunch)…"
+                          style={{ width: "100%", padding: "8px 30px 8px 30px", borderRadius: 8, border: `1px solid ${THEME.border}`, fontSize: 12.5, background: "#FFF", color: "#132422", boxSizing: "border-box" }}
+                        />
+                        {presetQuery && (
+                          <button
+                            type="button"
+                            onClick={() => setPresetQuery("")}
+                            aria-label="Clear search"
+                            style={{ position: "absolute", right: 8, top: 8, background: "none", border: "none", color: "#6B8782", cursor: "pointer", padding: 0, display: "flex" }}
+                          >
+                            <X size={14} />
+                          </button>
+                        )}
+                      </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 260, overflowY: "auto", paddingRight: 4 }}>
-                        {catalog.map((cat) => (
+                        {presetFilteredCatalog.length === 0 && (
+                          <div style={{ fontSize: 12, color: THEME.textMuted, padding: 8 }}>No vendor items match &quot;{presetQuery}&quot;.</div>
+                        )}
+                        {presetFilteredCatalog.map((cat) => (
                           <div key={cat.id} style={{ background: THEME.cardDeepBg, padding: 8, borderRadius: 8 }}>
                             <div style={{ fontWeight: 700, fontSize: 12, color: COLORS.coral, marginBottom: 4 }}>{cat.title}</div>
                             {cat.items.map((i) => {
@@ -3534,7 +3614,7 @@ Write an enticing, structured, high-converting WhatsApp proposal using appropria
                         Save Package Shortcut
                       </button>
                       <button
-                        onClick={() => setEditingPreset(null)}
+                        onClick={() => { setPresetQuery(""); setEditingPreset(null); }}
                         style={{ padding: "10px 14px", borderRadius: 8, background: THEME.cardDeepBg, color: THEME.textMain, border: `1px solid ${THEME.border}`, fontWeight: 700, cursor: "pointer" }}
                       >
                         Cancel
@@ -3877,7 +3957,7 @@ Write an enticing, structured, high-converting WhatsApp proposal using appropria
                         Reset Password
                       </button>
                       <button
-                        onClick={() => setEditingUser(user)}
+                        onClick={() => openEditRules(user)}
                         style={{ padding: "4px 8px", borderRadius: 6, background: COLORS.oceanLight, color: "#F4EEDD", border: "none", fontSize: 11.5, fontWeight: 700, cursor: "pointer" }}
                       >
                         Edit Rules
@@ -3892,6 +3972,129 @@ Write an enticing, structured, high-converting WhatsApp proposal using appropria
                   )}
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {editingUser && editDraft && (
+          <div
+            style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}
+          >
+            <div
+              style={{ background: THEME.cardBg, borderRadius: 20, padding: 24, maxWidth: 560, width: "100%", maxHeight: "92vh", overflowY: "auto", border: `1px solid ${THEME.border}`, boxShadow: "0 16px 40px rgba(0,0,0,0.35)" }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                <h3 style={{ margin: 0, fontFamily: "'Fraunces', serif", fontSize: 19, color: THEME.textMain }}>
+                  Edit Rules - @{editingUser.username}
+                </h3>
+                <button onClick={closeEditRules} style={{ background: "none", border: "none", color: THEME.textMuted, cursor: "pointer" }}>
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10, marginBottom: 12 }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: THEME.textMain, marginBottom: 4 }}>Full Name</label>
+                  <input
+                    value={editDraft.name}
+                    onChange={(e) => setEditDraft({ ...editDraft, name: e.target.value })}
+                    style={{ width: "100%", padding: "7px 9px", borderRadius: 8, border: `1px solid ${THEME.border}`, fontSize: 12, background: "#FFF", color: "#132422", boxSizing: "border-box" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: THEME.textMain, marginBottom: 4 }}>Role Class</label>
+                  <select
+                    value={editDraft.role}
+                    onChange={(e) => setEditDraft({ ...editDraft, role: e.target.value })}
+                    style={{ width: "100%", padding: "7px 9px", borderRadius: 8, border: `1px solid ${THEME.border}`, fontSize: 12, fontWeight: 600, background: "#FFF", color: "#132422" }}
+                  >
+                    <option value="Staff Agent">Staff Agent</option>
+                    <option value="Freelance Sales">Freelance Sales</option>
+                    <option value="Partner Agency / B2B Reseller">Partner Agency / B2B Reseller</option>
+                    <option value="Tour Guide / Field Lead">Tour Guide / Field Lead</option>
+                    <option value="Operations & Finance">Operations & Finance</option>
+                    <option value="Admin Manager">Admin Manager</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: THEME.textMain, marginBottom: 4 }}>Min Profit Margin (%)</label>
+                  <input
+                    type="number"
+                    value={editDraft.minMargin}
+                    onChange={(e) => setEditDraft({ ...editDraft, minMargin: e.target.value })}
+                    style={{ width: "100%", padding: "7px 9px", borderRadius: 8, border: `1px solid ${THEME.border}`, fontSize: 12, background: "#FFF", color: "#132422", boxSizing: "border-box" }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8, borderTop: `1px dashed ${THEME.border}`, paddingTop: 10 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: THEME.textMain, display: "flex", alignItems: "center", gap: 6 }}>
+                  <input
+                    type="checkbox"
+                    checked={!!editDraft.canSeeVendorCosts}
+                    onChange={(e) => setEditDraft({ ...editDraft, canSeeVendorCosts: e.target.checked })}
+                  />
+                  Can View Vendor Costs & Margins
+                </label>
+
+                <label style={{ fontSize: 12, fontWeight: 600, color: THEME.textMain, display: "flex", alignItems: "center", gap: 6 }}>
+                  <input
+                    type="checkbox"
+                    checked={!!editDraft.canEditCatalog}
+                    onChange={(e) => setEditDraft({ ...editDraft, canEditCatalog: e.target.checked })}
+                  />
+                  Can Edit Vendor Catalog
+                </label>
+
+                <label style={{ fontSize: 12, fontWeight: 600, color: THEME.textMain, display: "flex", alignItems: "center", gap: 6 }}>
+                  <input
+                    type="checkbox"
+                    checked={!!editDraft.canEditPresets}
+                    onChange={(e) => setEditDraft({ ...editDraft, canEditPresets: e.target.checked })}
+                  />
+                  Can Edit Package Presets
+                </label>
+
+                <label style={{ fontSize: 12, fontWeight: 600, color: THEME.textMain, display: "flex", alignItems: "center", gap: 6 }}>
+                  <input
+                    type="checkbox"
+                    checked={!!editDraft.canSeeAllDashboardQuotes}
+                    onChange={(e) => setEditDraft({ ...editDraft, canSeeAllDashboardQuotes: e.target.checked })}
+                  />
+                  Can View All Company Quotes
+                </label>
+
+                <label style={{ fontSize: 12, fontWeight: 600, color: THEME.textMain, display: "flex", alignItems: "center", gap: 6 }}>
+                  <input
+                    type="checkbox"
+                    checked={!!editDraft.canAccessDashboard}
+                    onChange={(e) => setEditDraft({ ...editDraft, canAccessDashboard: e.target.checked })}
+                  />
+                  Can Access Personal Dashboard
+                </label>
+              </div>
+
+              {(editDraft.role === "Freelance Sales" || editDraft.role === "Partner Agency / B2B Reseller") && (
+                <div style={{ fontSize: 11, color: THEME.textMuted, marginTop: 10, lineHeight: 1.5 }}>
+                  Freelance and partner roles never see vendor costs and cannot edit the catalog, presets or company quotes, whatever is ticked here.
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+                <button
+                  onClick={saveUserRules}
+                  disabled={editBusy}
+                  style={{ padding: "9px 18px", borderRadius: 8, background: COLORS.coral, color: "#FFF", border: "none", fontSize: 13, fontWeight: 700, cursor: editBusy ? "default" : "pointer", opacity: editBusy ? 0.6 : 1 }}
+                >
+                  {editBusy ? "Saving..." : "Save rules"}
+                </button>
+                <button
+                  onClick={closeEditRules}
+                  style={{ padding: "9px 18px", borderRadius: 8, background: "transparent", color: THEME.textMuted, border: `1px solid ${THEME.border}`, fontSize: 13, fontWeight: 700, cursor: "pointer" }}
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         )}

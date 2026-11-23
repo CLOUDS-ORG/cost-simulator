@@ -1,9 +1,17 @@
 import { createClient } from "@supabase/supabase-js";
 
-// Server-only route: creates, deletes and resets passwords for team accounts.
+// Server-only route: creates, deletes, edits rules of and resets passwords for team accounts.
 // Uses the secret service-role key, which must NEVER be exposed to the browser.
 
 const FREELANCE_ROLES = ["Freelance Sales", "Partner Agency / B2B Reseller"];
+const EDITABLE_ROLES = [
+  "Staff Agent",
+  "Freelance Sales",
+  "Partner Agency / B2B Reseller",
+  "Tour Guide / Field Lead",
+  "Operations & Finance",
+  "Admin Manager",
+];
 
 function adminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -148,7 +156,45 @@ export async function PATCH(request) {
   const auth = await requireGod(request, admin);
   if (auth.error) return auth.error;
 
-  const { id, password } = await request.json().catch(() => ({}));
+  const { id, password, rules } = await request.json().catch(() => ({}));
+
+  // Edit an account's rules: name, role, minimum margin and permissions.
+  if (id && rules && typeof rules === "object") {
+    const name = String(rules.name || "").trim();
+    const role = String(rules.role || "");
+    const minMargin = Number(rules.minMargin);
+    if (!name) return json({ error: "Full name is required." }, 400);
+    if (!EDITABLE_ROLES.includes(role)) return json({ error: "Please choose a valid role." }, 400);
+    if (!Number.isFinite(minMargin) || minMargin < 0 || minMargin > 100) {
+      return json({ error: "Min profit margin must be between 0 and 100." }, 400);
+    }
+
+    const { data: target } = await admin.from("profiles").select("id, role").eq("id", id).maybeSingle();
+    if (!target) return json({ error: "Account not found." }, 404);
+    if (target.role === "GOD") return json({ error: "The master admin's rules cannot be changed." }, 400);
+
+    const isFreelance = FREELANCE_ROLES.includes(role);
+    const update = {
+      name,
+      role,
+      min_margin: minMargin,
+      can_see_vendor_costs: isFreelance ? false : !!rules.canSeeVendorCosts,
+      can_edit_catalog: isFreelance ? false : !!rules.canEditCatalog,
+      can_override_costs: isFreelance ? false : !!rules.canOverrideCosts,
+      can_edit_presets: isFreelance ? false : !!rules.canEditPresets,
+      can_see_all_dashboard_quotes: isFreelance ? false : !!rules.canSeeAllDashboardQuotes,
+      can_access_dashboard: rules.canAccessDashboard !== false,
+    };
+    const { data: updated, error: updateErr } = await admin
+      .from("profiles")
+      .update(update)
+      .eq("id", id)
+      .select()
+      .single();
+    if (updateErr) return json({ error: updateErr.message }, 400);
+    return json({ user: toClient(updated) });
+  }
+
   if (!id || typeof password !== "string" || password.length < 8) {
     return json({ error: "Password must be at least 8 characters." }, 400);
   }
