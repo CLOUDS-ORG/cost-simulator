@@ -955,6 +955,10 @@ export default function App() {
     updateCurrentQuote({ kidsRate: nextVal });
   };
 
+  const manualAdultPrice = currentQuote?.manualAdultPrice ?? null;
+  const setManualAdultPrice = (val) =>
+    updateCurrentQuote({ manualAdultPrice: val === "" || val === null || Number(val) <= 0 ? null : Number(val) });
+
   const margin = currentQuote?.margin || 25;
   const setMargin = (val) => {
     const requested = typeof val === "function" ? val(currentQuote.margin) : val;
@@ -1414,10 +1418,18 @@ export default function App() {
       return { day, dayCost, selectedItems };
     });
 
-    const grandProfit = grandCost * (margin / 100);
-    const grandPrice = grandCost + grandProfit;
+    // Optional manual deal price per adult (agreed with the agent / PIC). When set it replaces
+    // the margin-based price. Non-GOD users still cannot go below their minimum margin.
+    const manual = Number(manualAdultPrice);
+    const hasManual = manual > 0 && weightedPax > 0;
+    const minAdultPrice = !isGodUser && weightedPax > 0 ? (grandCost * (1 + userMinMargin / 100)) / weightedPax : 0;
+    const manualBelowMin = hasManual && manual < minAdultPrice - 0.5;
+    const manualActive = hasManual && !manualBelowMin;
 
-    const adultPricePax = weightedPax > 0 ? grandPrice / weightedPax : 0;
+    const autoPrice = grandCost + grandCost * (margin / 100);
+    const adultPricePax = manualActive ? manual : weightedPax > 0 ? autoPrice / weightedPax : 0;
+    const grandPrice = manualActive ? manual * weightedPax : autoPrice;
+    const grandProfit = grandPrice - grandCost;
     const childPricePax = adultPricePax * (kidsRate / 100);
 
     return {
@@ -1426,10 +1438,13 @@ export default function App() {
       price: grandPrice,
       adultPricePax,
       childPricePax,
+      manualActive,
+      manualBelowMin,
+      effectiveMargin: grandCost > 0 ? (grandProfit / grandCost) * 100 : 0,
       lineCount: totalLineCount,
       dayBreakdowns,
     };
-  }, [days, margin, totalPax, weightedPax, kidsRate, catalog]);
+  }, [days, margin, totalPax, weightedPax, kidsRate, catalog, manualAdultPrice, isGodUser, userMinMargin]);
 
   const filteredCatalog = useMemo(() => {
     if (!query.trim()) return catalog;
@@ -2695,8 +2710,40 @@ Write an enticing, structured, high-converting WhatsApp proposal using appropria
               {/* Per Pax Breakdown Cards */}
               <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
                 <div style={{ flex: 1, background: THEME.cardDeepBg, padding: "10px 12px", borderRadius: 10, border: `1px solid ${THEME.border}` }}>
-                  <div style={{ fontSize: 11, color: THEME.textMuted, fontWeight: 700 }}>Adult Price / pax</div>
+                  <div style={{ fontSize: 11, color: THEME.textMuted, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
+                    <span>Adult Price / pax</span>
+                    {totals.manualActive && (
+                      <span style={{ fontSize: 10, fontWeight: 700, color: "#FFF", background: COLORS.coral, borderRadius: 4, padding: "1px 6px" }}>MANUAL</span>
+                    )}
+                  </div>
                   <div style={{ fontWeight: 700, fontSize: 16, color: THEME.textMain }}>{idr(totals.adultPricePax)}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8 }}>
+                    <input
+                      type="number"
+                      min={0}
+                      step={1000}
+                      inputMode="numeric"
+                      value={manualAdultPrice ?? ""}
+                      onChange={(e) => setManualAdultPrice(e.target.value)}
+                      placeholder="Manual deal price (Rp)"
+                      aria-label="Manual adult price per pax"
+                      style={{ flex: 1, minWidth: 0, padding: "6px 8px", borderRadius: 8, border: `1px solid ${totals.manualBelowMin ? "#C62828" : THEME.border}`, fontSize: 12, background: "#FFF", color: "#132422", boxSizing: "border-box" }}
+                    />
+                    {manualAdultPrice !== null && (
+                      <button
+                        type="button"
+                        onClick={() => setManualAdultPrice(null)}
+                        style={{ padding: "5px 8px", borderRadius: 8, background: "transparent", color: THEME.textMain, border: `1px solid ${THEME.border}`, fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }}
+                      >
+                        <RotateCcw size={11} /> Auto
+                      </button>
+                    )}
+                  </div>
+                  {totals.manualBelowMin && (
+                    <div style={{ fontSize: 11, color: "#EF9A9A", fontWeight: 700, marginTop: 4 }}>
+                      Below your minimum margin, so the automatic price is used.
+                    </div>
+                  )}
                 </div>
                 {kids > 0 && (
                   <div style={{ flex: 1, background: THEME.cardDeepBg, padding: "10px 12px", borderRadius: 10, border: `1px solid ${THEME.border}` }}>
@@ -2718,6 +2765,11 @@ Write an enticing, structured, high-converting WhatsApp proposal using appropria
                     </label>
                     <span style={{ fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 18, color: COLORS.coral }}>{margin}%</span>
                   </div>
+                  {totals.manualActive && (
+                    <div style={{ fontSize: 11.5, fontWeight: 700, color: COLORS.coral, marginBottom: 6 }}>
+                      Manual price is active, so the slider is ignored. Effective margin: {totals.effectiveMargin.toFixed(1)}%
+                    </div>
+                  )}
                   <input
                     type="range"
                     min={isGodUser ? 0 : userMinMargin}
@@ -2982,7 +3034,7 @@ Write an enticing, structured, high-converting WhatsApp proposal using appropria
                       </div>
                       <div>
                         <div style={{ fontSize: 10.5, color: "#A3C2BD", fontWeight: 700, textTransform: "uppercase" }}>
-                          Margin ({margin}%)
+                          Margin ({totals.manualActive ? totals.effectiveMargin.toFixed(1) : margin}%)
                         </div>
                         <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.coralSoft }}>
                           + {idr(totals.profit)}
