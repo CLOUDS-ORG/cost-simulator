@@ -949,6 +949,15 @@ export default function App() {
     logUserActivity(`Changed kids count to ${nextVal}`, currentQuote?.id);
   };
 
+  // FOC / TL: guests who travel free (e.g. group leader). They cost money but pay nothing, so
+  // their cost is spread over the paying guests.
+  const foc = currentQuote?.foc || 0;
+  const setFoc = (val) => {
+    const nextVal = Math.max(0, typeof val === "function" ? val(currentQuote.foc || 0) : val);
+    updateCurrentQuote({ foc: nextVal });
+    logUserActivity(`Changed FOC/TL count to ${nextVal}`, currentQuote?.id);
+  };
+
   const kidsRate = currentQuote?.kidsRate || 65;
   const setKidsRate = (val) => {
     const nextVal = typeof val === "function" ? val(currentQuote.kidsRate) : val;
@@ -977,8 +986,9 @@ export default function App() {
 
   const activeDay = days[activeDayIndex] || days[0];
 
-  const totalPax = adults + kids;
-  const weightedPax = adults + kids * (kidsRate / 100);
+  const totalPax = adults + kids + foc; // everyone who travels (vehicles, tiers)
+  const weightedPax = adults + kids * (kidsRate / 100); // paying guests: the price is divided by this
+  const costPax = weightedPax + foc; // per-pax vendor cost: FOC/TL cost the full adult rate
 
   const handleAddDay = () => {
     const nextDayNum = days.length + 1;
@@ -1387,7 +1397,7 @@ export default function App() {
           const cfg =
             day.itemConfig?.[item.id] || defaultConfigFor(cat.id, item.name);
           if (isSelected(cfg)) {
-            const cost = computeItemCost(item, cfg, totalPax, weightedPax);
+            const cost = computeItemCost(item, cfg, totalPax, costPax);
             dayCost += cost;
             totalLineCount++;
             selectedItems.push({
@@ -1402,7 +1412,7 @@ export default function App() {
       });
 
       (day.custom || []).forEach((c) => {
-        const cost = c.mode === "pax" ? c.price * weightedPax : (c.qty || 1) * c.price;
+        const cost = c.mode === "pax" ? c.price * costPax : (c.qty || 1) * c.price;
         dayCost += cost;
         totalLineCount++;
         selectedItems.push({
@@ -1444,7 +1454,7 @@ export default function App() {
       lineCount: totalLineCount,
       dayBreakdowns,
     };
-  }, [days, margin, totalPax, weightedPax, kidsRate, catalog, manualAdultPrice, isGodUser, userMinMargin]);
+  }, [days, margin, totalPax, weightedPax, costPax, kidsRate, catalog, manualAdultPrice, isGodUser, userMinMargin]);
 
   const filteredCatalog = useMemo(() => {
     if (!query.trim()) return catalog;
@@ -1538,7 +1548,7 @@ export default function App() {
     if (currentQuote.pic) info.push(`👤 PIC: ${currentQuote.pic}`);
     if (currentQuote.agent) info.push(`🏢 Agent / Channel: ${currentQuote.agent}`);
     info.push(`🗓 Tour Date: ${currentQuote.activityDate || "TBA"}`);
-    info.push(`👥 Pax Count: ${adults} Adult(s)${kids > 0 ? `, ${kids} Child(ren) (${kidsRate}%)` : ""}`);
+    info.push(`👥 Pax Count: ${adults} Adult(s)${kids > 0 ? `, ${kids} Child(ren) (${kidsRate}%)` : ""}${foc > 0 ? ` + ${foc} FOC` : ""}`);
 
     const itineraryIncl = totals.dayBreakdowns
       .map(({ day, selectedItems }) => {
@@ -1558,7 +1568,7 @@ export default function App() {
       price_pax: idr(totals.adultPricePax),
       child_line: kids > 0 ? `👶 Child Price / pax (${kidsRate}%): ${idr(totals.childPricePax)}` : "",
     });
-  }, [days, adults, kids, kidsRate, totals, currentQuote, quoteTemplates]);
+  }, [days, adults, kids, foc, kidsRate, totals, currentQuote, quoteTemplates]);
 
   const generateAiProposalPrompt = async () => {
     setIsGeneratingAi(true);
@@ -1696,7 +1706,7 @@ Write an enticing, structured, high-converting WhatsApp proposal using appropria
         [L.agent, currentQuote.agent],
         [L.pic, currentQuote.pic],
       ].filter(([, v]) => v);
-      const paxText = `${adults} ${L.adults}${kids > 0 ? `, ${kids} ${L.kids}` : ""}`;
+      const paxText = `${adults} ${L.adults}${kids > 0 ? `, ${kids} ${L.kids}` : ""}${foc > 0 ? `, ${foc} FOC` : ""}`;
       const notes = templateNotes.trim();
       const vars = {
         title: currentQuote.title || "Tour",
@@ -1718,7 +1728,7 @@ Write an enticing, structured, high-converting WhatsApp proposal using appropria
       };
       return fillTemplate(quoteTemplates[`${tab === "wa" ? "wa" : "quote"}_${lang}`], vars);
     },
-    [totals, adults, kids, currentQuote, templateNotes, days, quoteTemplates]
+    [totals, adults, kids, foc, currentQuote, templateNotes, days, quoteTemplates]
   );
 
   const saveQuoteToDatabase = (statusToSave = "Draft") => {
@@ -2678,6 +2688,17 @@ Write an enticing, structured, high-converting WhatsApp proposal using appropria
                   </button>
                 </div>
 
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 12.5, color: THEME.textMuted, fontWeight: 700 }}>FOC / TL</span>
+                  <button onClick={() => setFoc((f) => Math.max(0, f - 1))} style={stepBtn(COLORS.deep, "#F4EEDD")}>
+                    <Minus size={12} />
+                  </button>
+                  <span style={{ minWidth: 18, textAlign: "center", fontWeight: 700, color: THEME.textMain }}>{foc}</span>
+                  <button onClick={() => setFoc((f) => f + 1)} style={stepBtn(COLORS.coral, "#F4EEDD")}>
+                    <Plus size={12} />
+                  </button>
+                </div>
+
                 {kids > 0 && (
                   <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                     <span style={{ fontSize: 11.5, color: THEME.textMuted, fontWeight: 700 }}>Child Rate:</span>
@@ -2694,6 +2715,12 @@ Write an enticing, structured, high-converting WhatsApp proposal using appropria
                   </div>
                 )}
               </div>
+
+              {foc > 0 && (
+                <div style={{ fontSize: 11.5, color: COLORS.coral, fontWeight: 700, marginTop: -6, marginBottom: 12 }}>
+                  {foc} FOC / TL travel free: their cost is spread over the {adults + kids} paying guest{adults + kids > 1 ? "s" : ""}.
+                </div>
+              )}
 
               {/* Sell Price Display Header */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 12, flexWrap: "wrap", gap: 10 }}>
