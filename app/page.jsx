@@ -434,6 +434,97 @@ const profileToUser = (p) => ({
   createdAt: (p.created_at || "").slice(0, 10),
 });
 
+
+const DEFAULT_QUOTE_TEMPLATES = {
+  quote_en: `QUOTATION - {{title}}
+Date: {{today}}
+{{details}}
+
+TOUR SUMMARY
+{{title}} for {{pax_text}} ({{days}} day(s)) at {{price_pax}} per person ({{price_total}} in total).
+
+ITINERARY
+{{itinerary}}
+{{notes}}
+INCLUSIONS
+{{inclusions}}
+
+PRICE
+{{price_lines}}
+
+EXCLUSIONS
+- Personal expenses, tips and travel insurance
+- Anything not listed under Inclusions
+
+Thank you for choosing us.`,
+  quote_id: `PENAWARAN HARGA - {{title}}
+Tanggal: {{today}}
+{{details}}
+
+RINGKASAN TOUR
+{{title}} untuk {{pax_text}} ({{days}} hari), harga {{price_pax}} per orang (total {{price_total}}).
+
+ITINERARY
+{{itinerary}}
+{{notes}}
+YANG TERMASUK
+{{inclusions}}
+
+HARGA
+{{price_lines}}
+
+TIDAK TERMASUK
+- Pengeluaran pribadi, tip dan asuransi perjalanan
+- Hal lain yang tidak tercantum pada bagian "Yang termasuk"
+
+Terima kasih telah memilih kami.`,
+  wa_en: `{{greeting}}, here is our quotation 🌴
+
+*{{title}}* ({{days}} day(s))
+{{details_wa}}
+👥 {{pax_text}}
+
+*Itinerary*
+{{itinerary_wa}}
+{{notes}}
+*Included*
+{{inclusions_wa}}
+
+💰 *Price: {{price_pax}} / pax*
+Total: {{price_total}}
+{{child_line}}
+Please let us know if you would like to proceed or change anything. Thank you! 🙏`,
+  wa_id: `{{greeting}}, berikut penawaran dari kami 🌴
+
+*{{title}}* ({{days}} hari)
+{{details_wa}}
+👥 {{pax_text}}
+
+*Itinerary*
+{{itinerary_wa}}
+{{notes}}
+*Sudah termasuk*
+{{inclusions_wa}}
+
+💰 *Harga: {{price_pax}} / pax*
+Total: {{price_total}}
+{{child_line}}
+Kabari kami kalau mau lanjut atau ada yang ingin diubah. Terima kasih! 🙏`,
+};
+
+const TEMPLATE_PLACEHOLDERS = [
+  "{{title}}", "{{today}}", "{{details}}", "{{details_wa}}", "{{greeting}}", "{{pax_text}}", "{{days}}",
+  "{{itinerary}}", "{{itinerary_wa}}", "{{notes}}", "{{inclusions}}", "{{inclusions_wa}}",
+  "{{price_pax}}", "{{price_total}}", "{{price_lines}}", "{{child_line}}",
+];
+
+function fillTemplate(template, vars) {
+  return String(template || "")
+    .replace(/\{\{(\w+)\}\}/g, (m, key) => (key in vars ? vars[key] : m))
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 const DEFAULT_AI_PROMPT =
   "You are an expert, warm, and high-converting Bali & Nusa Penida tour coordinator. Create a clear, engaging tour proposal for WhatsApp.";
 
@@ -547,10 +638,14 @@ export default function App() {
 
   const [showAiDrawer, setShowAiDrawer] = useState(false);
   const [showWhatsappModal, setShowWhatsappModal] = useState(false);
-  const [showAiItineraryModal, setShowAiItineraryModal] = useState(false);
-  const [aiItineraryPrompt, setAiItineraryPrompt] = useState("");
-  const [generatedAiItinerary, setGeneratedAiItinerary] = useState("");
-  const [isGeneratingItinerary, setIsGeneratingItinerary] = useState(false);
+  const [showQuoteTemplateModal, setShowQuoteTemplateModal] = useState(false);
+  const [quoteTemplates, setQuoteTemplates] = useState(DEFAULT_QUOTE_TEMPLATES);
+  const [templateTab, setTemplateTab] = useState("quote");
+  const [templateLang, setTemplateLang] = useState("en");
+  const [templateNotes, setTemplateNotes] = useState("");
+  const [templateOutput, setTemplateOutput] = useState("");
+  const [templateEditing, setTemplateEditing] = useState(false);
+  const [templateDraft, setTemplateDraft] = useState("");
   const [aiPersona, setAiPersona] = useState("advisor");
   const [aiLanguage, setAiLanguage] = useState("English");
   const [masterAiPrompt, setMasterAiPrompt] = useState(DEFAULT_AI_PROMPT);
@@ -603,11 +698,14 @@ export default function App() {
     const nextCatalog = remote.catalog ?? DEFAULT_CATALOG;
     const nextPresets = remote.presets ?? DEFAULT_PRESETS;
     const nextPrompt = remote.ai_prompt ?? DEFAULT_AI_PROMPT;
+    const nextTemplates = { ...DEFAULT_QUOTE_TEMPLATES, ...(remote.quote_templates || {}) };
     lastSynced.current = {
       catalog: JSON.stringify(nextCatalog),
       presets: JSON.stringify(nextPresets),
       ai_prompt: JSON.stringify(nextPrompt),
+      quote_templates: JSON.stringify(nextTemplates),
     };
+    setQuoteTemplates(nextTemplates);
     setCatalog(nextCatalog);
     setPresets(nextPresets);
     setMasterAiPrompt(nextPrompt);
@@ -688,6 +786,10 @@ export default function App() {
   useEffect(() => {
     if (dataLoaded && (isRealGod || currentUser?.canEditPresets)) syncSharedState("presets", presets);
   }, [presets, dataLoaded, isRealGod, currentUser, syncSharedState]);
+
+  useEffect(() => {
+    if (dataLoaded && (isRealGod || currentUser?.canEditPresets)) syncSharedState("quote_templates", quoteTemplates);
+  }, [quoteTemplates, dataLoaded, isRealGod, currentUser, syncSharedState]);
 
   useEffect(() => {
     if (dataLoaded && isRealGod) syncSharedState("ai_prompt", masterAiPrompt);
@@ -1429,68 +1531,64 @@ Write an enticing, structured, high-converting WhatsApp proposal using appropria
     }
   };
 
-  const generateAiItineraryWithClaude = async () => {
-    if (!aiItineraryPrompt.trim()) return;
-    setIsGeneratingItinerary(true);
-    setGeneratedAiItinerary("✨ Claude AI is designing your custom tour itinerary...");
+  const buildTemplateText = useCallback(
+    (tab, lang) => {
+      const id = lang === "id";
+      const L = id
+        ? { date: "Tanggal tour", agent: "Agent", pic: "PIC", adult: "Dewasa", child: "Anak", total: "Total", day: "Hari", greet: "Halo", adults: "dewasa", kids: "anak" }
+        : { date: "Tour date", agent: "Agent", pic: "PIC", adult: "Adult", child: "Child", total: "Total", day: "Day", greet: "Hello", adults: "adult(s)", kids: "child(ren)" };
+      const isFree = (it) => !it.item.price || /^no\s/i.test(it.item.name);
+      const dayList = totals.dayBreakdowns.map(({ day, selectedItems }) => ({
+        title: day.title,
+        items: selectedItems.filter((it) => !isFree(it)).map((it) => it.item.name),
+      }));
+      const dayHead = (d, i) => (/^(day|hari)\s*\d+$/i.test((d.title || "").trim()) ? `${L.day} ${i + 1}` : `${L.day} ${i + 1} - ${d.title}`);
+      const itineraryPlain = dayList
+        .map((d, i) => `${dayHead(d, i)}\n${d.items.map((n) => `- ${n}`).join("\n")}`)
+        .join("\n\n");
+      const itineraryWa = dayList
+        .map((d, i) => `*${dayHead(d, i)}*\n${d.items.map((n) => `• ${n}`).join("\n")}`)
+        .join("\n\n");
+      const uniqueNames = [];
+      dayList.forEach((d) => d.items.forEach((n) => { if (!uniqueNames.includes(n)) uniqueNames.push(n); }));
 
-    try {
-      const apiUrl = "/api/ai";
-      const { data: sessionData } = await supabase.auth.getSession();
-      const aiToken = sessionData?.session?.access_token || "";
+      const adultTotal = totals.adultPricePax * adults;
+      const childTotal = totals.childPricePax * kids;
+      const priceLines = [
+        `${L.adult}: ${idr(totals.adultPricePax)} x ${adults} = ${idr(adultTotal)}`,
+        ...(kids > 0 ? [`${L.child}: ${idr(totals.childPricePax)} x ${kids} = ${idr(childTotal)}`] : []),
+        `${L.total}: ${idr(totals.price)}`,
+      ].join("\n");
 
-      const availableItems = catalog
-        .flatMap((c) => c.items.map((i) => `${i.name} (${c.title})`))
-        .join(", ");
-
-      const promptText = `
-Design a complete, detailed day-by-day Bali / Nusa Penida tour itinerary based on this request: "${aiItineraryPrompt.trim()}".
-Number of Guests: ${adults} Adult(s), ${kids} Child(ren).
-
-Available Vendor Services in Database:
-${availableItems}
-
-Please format the output clearly with:
-1. Itinerary Overview & Highlights
-2. Day-by-Day Detailed Schedule with timing & insider photo tips
-3. Recommended Vendor Items from database to include
-4. Practical Travel & Packing Advice
-
-Use markdown formatting and engaging travel emojis.
-`;
-
-      const payload = {
-        prompt: promptText,
-        system:
-          "You are a master Bali & Nusa Penida tour architect. Create vivid, realistic, high-value tour itineraries optimized for guest satisfaction and smooth logistics.",
+      const detailPairs = [
+        [L.date, currentQuote.activityDate],
+        [L.agent, currentQuote.agent],
+        [L.pic, currentQuote.pic],
+      ].filter(([, v]) => v);
+      const paxText = `${adults} ${L.adults}${kids > 0 ? `, ${kids} ${L.kids}` : ""}`;
+      const notes = templateNotes.trim();
+      const vars = {
+        title: currentQuote.title || "Tour",
+        today: new Date().toLocaleDateString(id ? "id-ID" : "en-GB", { day: "numeric", month: "long", year: "numeric" }),
+        details: detailPairs.map(([k, v]) => `${k}: ${v}`).join("\n"),
+        details_wa: detailPairs.filter(([k]) => k !== L.pic).map(([k, v]) => `${k === L.date ? "🗓" : "🏢"} ${k}: ${v}`).join("\n"),
+        greeting: currentQuote.agent ? `${L.greet} ${currentQuote.agent}` : L.greet,
+        pax_text: paxText,
+        days: String(days.length),
+        itinerary: itineraryPlain,
+        itinerary_wa: itineraryWa,
+        notes: notes ? `\n${notes}\n` : "",
+        inclusions: uniqueNames.map((n) => `- ${n}`).join("\n"),
+        inclusions_wa: uniqueNames.map((n) => `• ${n}`).join("\n"),
+        price_pax: idr(totals.adultPricePax),
+        price_total: idr(totals.price),
+        price_lines: priceLines,
+        child_line: kids > 0 ? `${L.child}: ${idr(totals.childPricePax)} / pax\n` : "",
       };
-
-      const res = await fetch(apiUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${aiToken}` },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-      const text = data?.text;
-
-      if (text) {
-        setGeneratedAiItinerary(text);
-        logUserActivity(`Generated AI Itinerary for prompt: "${aiItineraryPrompt.slice(0, 30)}..."`, currentQuote?.id);
-      } else {
-        throw new Error("No response text");
-      }
-    } catch (err) {
-      setGeneratedAiItinerary(
-        `📍 *CUSTOM ITINERARY SUGGESTION*\n\n` +
-          `• **Day 1**: Pickup & Fastboat Transfer to Nusa Penida, West Coast Highlights (Kelingking Cliff, Broken Beach, Angel's Billabong), Sunset Dinner.\n` +
-          `• **Day 2**: East Coast Exploration (Diamond Beach, Atuh Beach, Tree House Molenteng), Return Fastboat Transfer to Bali.\n\n` +
-          `*Note: Generated using offline backup rule. Reconnect network for live AI responses.*`
-      );
-    } finally {
-      setIsGeneratingItinerary(false);
-    }
-  };
+      return fillTemplate(quoteTemplates[`${tab === "wa" ? "wa" : "quote"}_${lang}`], vars);
+    },
+    [totals, adults, kids, currentQuote, templateNotes, days, quoteTemplates]
+  );
 
   const saveQuoteToDatabase = (statusToSave = "Draft") => {
     const record = {
@@ -2061,7 +2159,7 @@ Use markdown formatting and engaging travel emojis.
                 </div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   <button
-                    onClick={() => setShowAiItineraryModal(true)}
+                    onClick={() => { setTemplateOutput(buildTemplateText(templateTab, templateLang)); setShowQuoteTemplateModal(true); }}
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -2076,7 +2174,7 @@ Use markdown formatting and engaging travel emojis.
                       cursor: "pointer",
                     }}
                   >
-                    <Sparkles size={13} /> AI Itinerary Creator
+                    <Copy size={13} /> Quote Template
                   </button>
                   <button
                     onClick={() => setShowAiDrawer(true)}
@@ -3739,172 +3837,134 @@ Use markdown formatting and engaging travel emojis.
           </div>
         )}
 
-        {showAiItineraryModal && (
+        {showQuoteTemplateModal && (
           <div
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: "rgba(0,0,0,0.65)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 1000,
-              padding: 16,
-            }}
+            style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}
           >
             <div
-              style={{
-                background: THEME.cardBg,
-                borderRadius: 20,
-                padding: 24,
-                maxWidth: 640,
-                width: "100%",
-                maxHeight: "90vh",
-                overflowY: "auto",
-                border: `1px solid ${THEME.border}`,
-                boxShadow: "0 16px 40px rgba(0,0,0,0.35)",
-              }}
+              style={{ background: THEME.cardBg, borderRadius: 20, padding: 24, maxWidth: 700, width: "100%", maxHeight: "92vh", overflowY: "auto", border: `1px solid ${THEME.border}`, boxShadow: "0 16px 40px rgba(0,0,0,0.35)" }}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <Sparkles size={22} color={COLORS.coral} />
-                  <h3 style={{ margin: 0, fontFamily: "'Fraunces', serif", fontSize: 20, color: THEME.textMain }}>
-                    Claude AI Itinerary Creator
-                  </h3>
-                </div>
-                <button onClick={() => setShowAiItineraryModal(false)} style={{ background: "none", border: "none", color: THEME.textMuted, cursor: "pointer" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                <h3 style={{ margin: 0, fontFamily: "'Fraunces', serif", fontSize: 20, color: THEME.textMain }}>Quote Template</h3>
+                <button onClick={() => { setShowQuoteTemplateModal(false); setTemplateEditing(false); }} style={{ background: "none", border: "none", color: THEME.textMuted, cursor: "pointer" }}>
                   <X size={20} />
                 </button>
               </div>
 
-              {/* Quick Inspiration Prompts */}
-              <div style={{ marginBottom: 14 }}>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: THEME.textMain, marginBottom: 6 }}>
-                  Quick Inspiration Prompts:
-                </label>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {[
-                    "3 Days Honeymoon with Snorkeling & Beach Clubs",
-                    "1 Day West Nusa Penida Express + Private Car",
-                    "2 Days Scuba Diving Certified + Luxury Resort",
-                    "East & West Combination Family Tour (2 Adults, 2 Kids)",
-                  ].map((tpl) => (
-                    <button
-                      key={tpl}
-                      onClick={() => setAiItineraryPrompt(tpl)}
-                      style={{
-                        padding: "5px 10px",
-                        borderRadius: 8,
-                        border: `1px solid ${THEME.border}`,
-                        background: THEME.cardDeepBg,
-                        color: THEME.textMain,
-                        fontSize: 11.5,
-                        fontWeight: 600,
-                        cursor: "pointer",
-                      }}
-                    >
-                      💡 {tpl}
-                    </button>
-                  ))}
-                </div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+                {[["quote", "Quote"], ["wa", "WhatsApp"]].map(([key, label]) => (
+                  <button
+                    key={key}
+                    onClick={() => { setTemplateTab(key); setTemplateEditing(false); setTemplateOutput(buildTemplateText(key, templateLang)); }}
+                    style={{ padding: "6px 14px", borderRadius: 8, border: `1px solid ${templateTab === key ? COLORS.coral : THEME.border}`, background: templateTab === key ? COLORS.coral : "transparent", color: templateTab === key ? "#FFF" : THEME.textMain, fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}
+                  >
+                    {label}
+                  </button>
+                ))}
+                <span style={{ width: 12 }} />
+                {[["en", "English"], ["id", "Indonesia"]].map(([key, label]) => (
+                  <button
+                    key={key}
+                    onClick={() => { setTemplateLang(key); setTemplateEditing(false); setTemplateOutput(buildTemplateText(templateTab, key)); }}
+                    style={{ padding: "6px 14px", borderRadius: 8, border: `1px solid ${templateLang === key ? COLORS.coral : THEME.border}`, background: templateLang === key ? COLORS.coral : "transparent", color: templateLang === key ? "#FFF" : THEME.textMain, fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
 
-              {/* Prompt Input Area */}
-              <div style={{ marginBottom: 14 }}>
+              <div style={{ marginBottom: 12 }}>
                 <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: THEME.textMain, marginBottom: 4 }}>
-                  Describe Your Desired Guest Tour Experience:
+                  Route / highlights / notes (optional, added to the itinerary):
                 </label>
                 <textarea
-                  rows={3}
-                  placeholder="e.g. Create a 2-day relaxed luxury itinerary with Manta Point snorkeling, oceanview lunch, private car, and fastboat transfers..."
-                  value={aiItineraryPrompt}
-                  onChange={(e) => setAiItineraryPrompt(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "10px",
-                    borderRadius: 10,
-                    border: `1px solid ${THEME.border}`,
-                    fontSize: 12.5,
-                    background: "#FFFFFF",
-                    color: "#132422",
-                    boxSizing: "border-box",
-                  }}
+                  rows={2}
+                  placeholder="e.g. Kelingking, Angel's Billabong, Broken Beach, Crystal Bay. Pick-up 07:00."
+                  value={templateNotes}
+                  onChange={(e) => setTemplateNotes(e.target.value)}
+                  style={{ width: "100%", padding: 10, borderRadius: 10, border: `1px solid ${THEME.border}`, fontSize: 12.5, background: "#FFFFFF", color: "#132422", boxSizing: "border-box" }}
                 />
               </div>
 
-              <button
-                onClick={generateAiItineraryWithClaude}
-                disabled={isGeneratingItinerary || !aiItineraryPrompt.trim()}
-                style={{
-                  width: "100%",
-                  padding: "12px",
-                  borderRadius: 10,
-                  background: COLORS.coral,
-                  color: "#FFF",
-                  fontWeight: 700,
-                  fontSize: 13.5,
-                  border: "none",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                  marginBottom: 14,
-                  opacity: isGeneratingItinerary || !aiItineraryPrompt.trim() ? 0.7 : 1,
-                }}
-              >
-                <Bot size={16} /> {isGeneratingItinerary ? "Designing Itinerary with Claude AI..." : "Create Itinerary with AI"}
-              </button>
-
-              {/* Generated Itinerary Output */}
-              {generatedAiItinerary && (
+              {!templateEditing ? (
                 <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: THEME.textMain }}>AI Designed Itinerary:</span>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, gap: 6, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: THEME.textMain }}>Result (you can edit this text before copying):</span>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button
+                        onClick={() => setTemplateOutput(buildTemplateText(templateTab, templateLang))}
+                        style={{ padding: "4px 10px", borderRadius: 6, background: "transparent", color: THEME.textMain, border: `1px solid ${THEME.border}`, fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+                      >
+                        <RotateCcw size={12} /> Refresh from quote
+                      </button>
+                      <button
+                        onClick={async () => {
+                          const success = await copyToClipboard(templateOutput);
+                          if (success) {
+                            setCopied(true);
+                            setTimeout(() => setCopied(false), 2000);
+                          }
+                        }}
+                        style={{ padding: "4px 10px", borderRadius: 6, background: COLORS.profit, color: "#FFF", border: "none", fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+                      >
+                        <Copy size={12} /> {copied ? "Copied!" : "Copy"}
+                      </button>
+                    </div>
+                  </div>
+                  <textarea
+                    rows={18}
+                    value={templateOutput}
+                    onChange={(e) => setTemplateOutput(e.target.value)}
+                    style={{ width: "100%", padding: 12, borderRadius: 10, border: `1px solid ${THEME.border}`, fontSize: 12, background: THEME.cardDeepBg, color: THEME.textMain, fontFamily: "monospace", boxSizing: "border-box" }}
+                  />
+                  {canEditPresets && (
                     <button
-                      onClick={async () => {
-                        const success = await copyToClipboard(generatedAiItinerary);
-                        if (success) {
-                          setCopied(true);
-                          setTimeout(() => setCopied(false), 2000);
-                        }
-                      }}
-                      style={{
-                        padding: "4px 8px",
-                        borderRadius: 6,
-                        background: COLORS.profit,
-                        color: "#FFF",
-                        border: "none",
-                        fontSize: 11,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 4,
-                      }}
+                      onClick={() => { setTemplateDraft(quoteTemplates[`${templateTab}_${templateLang}`]); setTemplateEditing(true); }}
+                      style={{ marginTop: 10, padding: "6px 12px", borderRadius: 8, background: "transparent", color: THEME.textMain, border: `1px dashed ${THEME.border}`, fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
                     >
-                      <Copy size={12} /> {copied ? "Copied!" : "Copy Itinerary"}
+                      <Pencil size={12} /> Edit this template (shared with the whole team)
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: THEME.textMain, marginBottom: 4 }}>
+                    Editing the {templateTab === "wa" ? "WhatsApp" : "Quote"} template ({templateLang === "id" ? "Indonesia" : "English"}). Everyone sees the change.
+                  </div>
+                  <div style={{ fontSize: 11, color: THEME.textMuted, marginBottom: 6, lineHeight: 1.5 }}>
+                    Placeholders filled automatically: {TEMPLATE_PLACEHOLDERS.join("  ")}
+                  </div>
+                  <textarea
+                    rows={18}
+                    value={templateDraft}
+                    onChange={(e) => setTemplateDraft(e.target.value)}
+                    style={{ width: "100%", padding: 12, borderRadius: 10, border: `1px solid ${THEME.border}`, fontSize: 12, background: "#FFFFFF", color: "#132422", fontFamily: "monospace", boxSizing: "border-box" }}
+                  />
+                  <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                    <button
+                      onClick={() => {
+                        const key = `${templateTab}_${templateLang}`;
+                        setQuoteTemplates((prev) => ({ ...prev, [key]: templateDraft }));
+                        logUserActivity(`Edited shared ${key} template`, currentQuote?.id);
+                        setTemplateEditing(false);
+                      }}
+                      style={{ padding: "8px 16px", borderRadius: 8, background: COLORS.coral, color: "#FFF", border: "none", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}
+                    >
+                      Save template
+                    </button>
+                    <button
+                      onClick={() => setTemplateDraft(DEFAULT_QUOTE_TEMPLATES[`${templateTab}_${templateLang}`])}
+                      style={{ padding: "8px 16px", borderRadius: 8, background: "transparent", color: THEME.textMain, border: `1px solid ${THEME.border}`, fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}
+                    >
+                      Restore default
+                    </button>
+                    <button
+                      onClick={() => setTemplateEditing(false)}
+                      style={{ padding: "8px 16px", borderRadius: 8, background: "transparent", color: THEME.textMuted, border: `1px solid ${THEME.border}`, fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}
+                    >
+                      Cancel
                     </button>
                   </div>
-                  <pre
-                    style={{
-                      background: THEME.cardDeepBg,
-                      padding: 12,
-                      borderRadius: 10,
-                      border: `1px solid ${THEME.border}`,
-                      fontSize: 12,
-                      color: THEME.textMain,
-                      whiteSpace: "pre-wrap",
-                      fontFamily: "monospace",
-                      maxHeight: 280,
-                      overflowY: "auto",
-                    }}
-                  >
-                    {generatedAiItinerary}
-                  </pre>
                 </div>
               )}
             </div>

@@ -20,7 +20,7 @@ create table if not exists public.profiles (
 );
 
 create table if not exists public.app_state (
-  key text primary key,            -- 'catalog' | 'presets' | 'ai_prompt'
+  key text primary key,            -- 'catalog' | 'presets' | 'ai_prompt' | 'quote_templates'
   value jsonb not null,
   updated_at timestamptz not null default now(),
   updated_by uuid references auth.users(id)
@@ -86,6 +86,7 @@ create policy app_state_insert on public.app_state for insert to authenticated
     public.is_god()
     or (key = 'catalog' and public.has_flag('catalog'))
     or (key = 'presets' and public.has_flag('presets'))
+    or (key = 'quote_templates' and public.has_flag('presets'))
   );
 
 drop policy if exists app_state_update on public.app_state;
@@ -94,11 +95,13 @@ create policy app_state_update on public.app_state for update to authenticated
     public.is_god()
     or (key = 'catalog' and public.has_flag('catalog'))
     or (key = 'presets' and public.has_flag('presets'))
+    or (key = 'quote_templates' and public.has_flag('presets'))
   )
   with check (
     public.is_god()
     or (key = 'catalog' and public.has_flag('catalog'))
     or (key = 'presets' and public.has_flag('presets'))
+    or (key = 'quote_templates' and public.has_flag('presets'))
   );
 
 -- quotes: own quotes; GOD or "see all quotes" users see and update everyone's.
