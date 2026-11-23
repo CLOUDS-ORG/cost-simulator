@@ -510,7 +510,25 @@ Please let us know if you would like to proceed or change anything. Thank you! �
 Total: {{price_total}}
 {{child_line}}
 Kabari kami kalau mau lanjut atau ada yang ingin diubah. Terima kasih! 🙏`,
+  // "WhatsApp Text" button: short quotation with core inclusions only (no vendor cost prices).
+  wq: `📍 *TOUR QUOTATION - {{title}} ({{days_label}})*
+{{quote_info}}
+-----------------------------------
+
+{{itinerary_incl}}
+
+-----------------------------------
+🏷 *Total Sell Price: {{price_total}}*
+👤 Adult Price / pax: {{price_pax}}
+{{child_line}}
+
+Thank you for choosing our tour services! ✨`,
 };
+
+const WQ_PLACEHOLDERS = [
+  "{{title}}", "{{days_label}}", "{{quote_info}}", "{{itinerary_incl}}",
+  "{{price_total}}", "{{price_pax}}", "{{child_line}}",
+];
 
 const TEMPLATE_PLACEHOLDERS = [
   "{{title}}", "{{today}}", "{{details}}", "{{details_wa}}", "{{greeting}}", "{{pax_text}}", "{{days}}",
@@ -523,6 +541,44 @@ function fillTemplate(template, vars) {
     .replace(/\{\{(\w+)\}\}/g, (m, key) => (key in vars ? vars[key] : m))
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+// Customer-facing label for a selected item in WhatsApp text: keeps only the core
+// inclusion (e.g. "Lunch") and drops restaurant/vendor names and price codes.
+// Returns null for free/"No ..." items so they are left out.
+function coreInclusionLabel({ item, cat }) {
+  const name = (item.name || "").trim();
+  if (!item.price || /^no\s/i.test(name)) return null;
+  switch (cat?.id) {
+    case "resto":
+      if (/guide/i.test(name)) return name;
+      return /dinner/i.test(name) ? "Dinner" : "Lunch";
+    case "car":
+      if (/luggage/i.test(name)) return name;
+      return /extra/i.test(name) ? "Extra car" : "Private car transport";
+    case "boat":
+      if (/guide/i.test(name)) return name;
+      if (/one\s*way/i.test(name)) return "Fast boat ticket (one way)";
+      if (/return/i.test(name)) return "Fast boat ticket (return)";
+      return "Fast boat ticket";
+    case "dive": {
+      const m = name.match(/^(?:wonderland|elite|ocean)\s+(\d)\s+place/i);
+      return m ? `Snorkeling (${m[1]} spots)` : name;
+    }
+    case "inclusion":
+      return name.replace(/\s+(?:arjuna|maruti)\b/i, "").replace(/\s+\d+$/, "").trim() || name;
+    default:
+      return name;
+  }
+}
+
+function coreInclusionLabels(selectedItems) {
+  const labels = [];
+  selectedItems.forEach((it) => {
+    const label = coreInclusionLabel(it);
+    if (label && !labels.includes(label)) labels.push(label);
+  });
+  return labels;
 }
 
 const DEFAULT_AI_PROMPT =
@@ -646,6 +702,9 @@ export default function App() {
   const [templateOutput, setTemplateOutput] = useState("");
   const [templateEditing, setTemplateEditing] = useState(false);
   const [templateDraft, setTemplateDraft] = useState("");
+  const [waqOutput, setWaqOutput] = useState("");
+  const [waqEditing, setWaqEditing] = useState(false);
+  const [waqDraft, setWaqDraft] = useState("");
   const [aiPersona, setAiPersona] = useState("advisor");
   const [aiLanguage, setAiLanguage] = useState("English");
   const [masterAiPrompt, setMasterAiPrompt] = useState(DEFAULT_AI_PROMPT);
@@ -1402,38 +1461,32 @@ export default function App() {
   };
 
   const formattedQuotationText = useMemo(() => {
-    let summary = `📍 *TOUR QUOTATION - ${currentQuote.title.toUpperCase()} (${days.length} Day${days.length > 1 ? "s" : ""})*\n`;
-    if (currentQuote.id) summary += `🆔 Quote ID: ${currentQuote.id}\n`;
-    if (currentQuote.pic) summary += `👤 PIC: ${currentQuote.pic}\n`;
-    if (currentQuote.agent) summary += `🏢 Agent / Channel: ${currentQuote.agent}\n`;
-    summary += `🗓 Tour Date: ${currentQuote.activityDate || "TBA"}\n`;
-    summary += `👥 Pax Count: ${adults} Adult(s)${kids > 0 ? `, ${kids} Child(ren) (${kidsRate}%)` : ""}\n`;
-    summary += `-----------------------------------\n`;
+    const info = [];
+    if (currentQuote.id) info.push(`🆔 Quote ID: ${currentQuote.id}`);
+    if (currentQuote.pic) info.push(`👤 PIC: ${currentQuote.pic}`);
+    if (currentQuote.agent) info.push(`🏢 Agent / Channel: ${currentQuote.agent}`);
+    info.push(`🗓 Tour Date: ${currentQuote.activityDate || "TBA"}`);
+    info.push(`👥 Pax Count: ${adults} Adult(s)${kids > 0 ? `, ${kids} Child(ren) (${kidsRate}%)` : ""}`);
 
-    totals.dayBreakdowns.forEach(({ day, selectedItems }) => {
-      summary += `\n🗓 *${day.title}*\n`;
-      if (selectedItems.length === 0) {
-        summary += ` • No items selected\n`;
-      } else {
-        selectedItems.forEach(({ item, caption }) => {
-          if (canSeeCosts) {
-            summary += ` • ${item.name} (${caption})\n`;
-          } else {
-            summary += ` • ${item.name}\n`;
-          }
-        });
-      }
+    const itineraryIncl = totals.dayBreakdowns
+      .map(({ day, selectedItems }) => {
+        const labels = coreInclusionLabels(selectedItems);
+        return `🗓 *${day.title}*\n${
+          labels.length === 0 ? " • No items selected" : `✅ *Included:*\n${labels.map((l) => ` • ${l}`).join("\n")}`
+        }`;
+      })
+      .join("\n\n");
+
+    return fillTemplate(quoteTemplates.wq, {
+      title: (currentQuote.title || "Tour").toUpperCase(),
+      days_label: `${days.length} Day${days.length > 1 ? "s" : ""}`,
+      quote_info: info.join("\n"),
+      itinerary_incl: itineraryIncl,
+      price_total: idr(totals.price),
+      price_pax: idr(totals.adultPricePax),
+      child_line: kids > 0 ? `👶 Child Price / pax (${kidsRate}%): ${idr(totals.childPricePax)}` : "",
     });
-
-    summary += `\n-----------------------------------\n`;
-    summary += `🏷 *Total Sell Price: ${idr(totals.price)}*\n`;
-    summary += `👤 Adult Price / pax: ${idr(totals.adultPricePax)}\n`;
-    if (kids > 0) {
-      summary += `👶 Child Price / pax (${kidsRate}%): ${idr(totals.childPricePax)}\n`;
-    }
-    summary += `\nThank you for choosing our tour services! ✨`;
-    return summary;
-  }, [days, adults, kids, kidsRate, totals, currentQuote, canSeeCosts]);
+  }, [days, adults, kids, kidsRate, totals, currentQuote, quoteTemplates]);
 
   const generateAiProposalPrompt = async () => {
     setIsGeneratingAi(true);
@@ -1546,11 +1599,17 @@ Write an enticing, structured, high-converting WhatsApp proposal using appropria
       const itineraryPlain = dayList
         .map((d, i) => `${dayHead(d, i)}\n${d.items.map((n) => `- ${n}`).join("\n")}`)
         .join("\n\n");
-      const itineraryWa = dayList
+      const waDayList = totals.dayBreakdowns.map(({ day, selectedItems }) => ({
+        title: day.title,
+        items: coreInclusionLabels(selectedItems),
+      }));
+      const itineraryWa = waDayList
         .map((d, i) => `*${dayHead(d, i)}*\n${d.items.map((n) => `• ${n}`).join("\n")}`)
         .join("\n\n");
       const uniqueNames = [];
       dayList.forEach((d) => d.items.forEach((n) => { if (!uniqueNames.includes(n)) uniqueNames.push(n); }));
+      const uniqueWaNames = [];
+      waDayList.forEach((d) => d.items.forEach((n) => { if (!uniqueWaNames.includes(n)) uniqueWaNames.push(n); }));
 
       const adultTotal = totals.adultPricePax * adults;
       const childTotal = totals.childPricePax * kids;
@@ -1579,7 +1638,7 @@ Write an enticing, structured, high-converting WhatsApp proposal using appropria
         itinerary_wa: itineraryWa,
         notes: notes ? `\n${notes}\n` : "",
         inclusions: uniqueNames.map((n) => `- ${n}`).join("\n"),
-        inclusions_wa: uniqueNames.map((n) => `• ${n}`).join("\n"),
+        inclusions_wa: uniqueWaNames.map((n) => `• ${n}`).join("\n"),
         price_pax: idr(totals.adultPricePax),
         price_total: idr(totals.price),
         price_lines: priceLines,
@@ -2195,7 +2254,7 @@ Write an enticing, structured, high-converting WhatsApp proposal using appropria
                     <Bot size={13} /> AI Proposal
                   </button>
                   <button
-                    onClick={() => setShowWhatsappModal(true)}
+                    onClick={() => { setWaqOutput(formattedQuotationText); setWaqEditing(false); setShowWhatsappModal(true); }}
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -4167,63 +4226,113 @@ Write an enticing, structured, high-converting WhatsApp proposal using appropria
                     Formatted WhatsApp Quotation
                   </h3>
                 </div>
-                <button onClick={() => setShowWhatsappModal(false)} style={{ background: "none", border: "none", color: THEME.textMuted, cursor: "pointer" }}>
+                <button onClick={() => { setShowWhatsappModal(false); setWaqEditing(false); }} style={{ background: "none", border: "none", color: THEME.textMuted, cursor: "pointer" }}>
                   <X size={18} />
                 </button>
               </div>
 
-              <pre
-                style={{
-                  background: THEME.cardDeepBg,
-                  padding: 14,
-                  borderRadius: 12,
-                  border: `1px solid ${THEME.border}`,
-                  fontSize: 12,
-                  color: THEME.textMain,
-                  whiteSpace: "pre-wrap",
-                  fontFamily: "monospace",
-                  marginBottom: 14,
-                  maxHeight: 320,
-                  overflowY: "auto",
-                }}
-              >
-                {formattedQuotationText}
-              </pre>
+              {!waqEditing ? (
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: THEME.textMain, marginBottom: 6 }}>
+                    Result (you can edit this text before copying):
+                  </div>
+                  <textarea
+                    rows={16}
+                    value={waqOutput}
+                    onChange={(e) => setWaqOutput(e.target.value)}
+                    style={{ width: "100%", padding: 12, borderRadius: 10, border: `1px solid ${THEME.border}`, fontSize: 12, background: THEME.cardDeepBg, color: THEME.textMain, fontFamily: "monospace", boxSizing: "border-box", marginBottom: 10 }}
+                  />
 
-              <div style={{ display: "flex", gap: 8 }}>
-                <button
-                  onClick={async () => {
-                    const success = await copyToClipboard(formattedQuotationText);
-                    if (success) {
-                      setCopied(true);
-                      setTimeout(() => setCopied(false), 2000);
-                    }
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: "10px",
-                    borderRadius: 8,
-                    background: COLORS.profit,
-                    color: "#FFF",
-                    fontWeight: 700,
-                    fontSize: 13,
-                    border: "none",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 6,
-                  }}
-                >
-                  <Copy size={14} /> {copied ? "Copied to Clipboard!" : "Copy WhatsApp Text"}
-                </button>
-                <button
-                  onClick={() => setShowWhatsappModal(false)}
-                  style={{ padding: "10px 16px", borderRadius: 8, background: THEME.cardDeepBg, color: THEME.textMain, border: `1px solid ${THEME.border}`, fontWeight: 700, cursor: "pointer" }}
-                >
-                  Close
-                </button>
-              </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                      onClick={async () => {
+                        const success = await copyToClipboard(waqOutput);
+                        if (success) {
+                          setCopied(true);
+                          setTimeout(() => setCopied(false), 2000);
+                        }
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: "10px",
+                        borderRadius: 8,
+                        background: COLORS.profit,
+                        color: "#FFF",
+                        fontWeight: 700,
+                        fontSize: 13,
+                        border: "none",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <Copy size={14} /> {copied ? "Copied to Clipboard!" : "Copy WhatsApp Text"}
+                    </button>
+                    <button
+                      onClick={() => setWaqOutput(formattedQuotationText)}
+                      style={{ padding: "10px 14px", borderRadius: 8, background: "transparent", color: THEME.textMain, border: `1px solid ${THEME.border}`, fontWeight: 700, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+                    >
+                      <RotateCcw size={12} /> Refresh from quote
+                    </button>
+                    <button
+                      onClick={() => { setShowWhatsappModal(false); setWaqEditing(false); }}
+                      style={{ padding: "10px 16px", borderRadius: 8, background: THEME.cardDeepBg, color: THEME.textMain, border: `1px solid ${THEME.border}`, fontWeight: 700, cursor: "pointer" }}
+                    >
+                      Close
+                    </button>
+                  </div>
+                  {canEditPresets && (
+                    <button
+                      onClick={() => { setWaqDraft(quoteTemplates.wq); setWaqEditing(true); }}
+                      style={{ marginTop: 10, padding: "6px 12px", borderRadius: 8, background: "transparent", color: THEME.textMain, border: `1px dashed ${THEME.border}`, fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
+                    >
+                      <Pencil size={12} /> Edit this template (shared with the whole team)
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: THEME.textMain, marginBottom: 4 }}>
+                    Editing the WhatsApp Quotation template. Everyone sees the change.
+                  </div>
+                  <div style={{ fontSize: 11, color: THEME.textMuted, marginBottom: 6, lineHeight: 1.5 }}>
+                    Placeholders filled automatically: {WQ_PLACEHOLDERS.join("  ")}
+                  </div>
+                  <textarea
+                    rows={16}
+                    value={waqDraft}
+                    onChange={(e) => setWaqDraft(e.target.value)}
+                    style={{ width: "100%", padding: 12, borderRadius: 10, border: `1px solid ${THEME.border}`, fontSize: 12, background: "#FFFFFF", color: "#132422", fontFamily: "monospace", boxSizing: "border-box" }}
+                  />
+                  <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                    <button
+                      onClick={() => {
+                        const template = waqDraft;
+                        setQuoteTemplates((prev) => ({ ...prev, wq: template }));
+                        logUserActivity("Edited shared wq template", currentQuote?.id);
+                        setWaqEditing(false);
+                      }}
+                      style={{ padding: "8px 16px", borderRadius: 8, background: COLORS.coral, color: "#FFF", border: "none", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}
+                    >
+                      Save template
+                    </button>
+                    <button
+                      onClick={() => setWaqDraft(DEFAULT_QUOTE_TEMPLATES.wq)}
+                      style={{ padding: "8px 16px", borderRadius: 8, background: "transparent", color: THEME.textMain, border: `1px solid ${THEME.border}`, fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}
+                    >
+                      Restore default
+                    </button>
+                    <button
+                      onClick={() => setWaqEditing(false)}
+                      style={{ padding: "8px 16px", borderRadius: 8, background: "transparent", color: THEME.textMuted, border: `1px solid ${THEME.border}`, fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
