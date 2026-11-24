@@ -342,6 +342,10 @@ function getAutoRuleForItem(catId, itemName = "", item = null) {
     if (lower.includes("sharing") || lower.includes("certified") || lower.includes("dive")) {
       return { mode: "pax", capacity: 1, threshold: 0, surcharge: 0 };
     }
+    // Private snorkeling "N Place": group price covers up to 4 pax, +50,000 per extra pax.
+    if (/\d\s*place/.test(lower)) {
+      return { mode: "tier", capacity: 4, threshold: 4, surcharge: 50000 };
+    }
     return { mode: "unit", capacity: 4, threshold: 0, surcharge: 0 };
   }
   return { mode: "flat", capacity: 4, threshold: 2, surcharge: 50000 };
@@ -1502,8 +1506,8 @@ export default function App() {
       price: Number(form.price) || 0,
       mode: form.mode || "pax",
       capacity: Number(form.capacity) || 4,
-      threshold: Number(form.threshold) || 2,
-      surcharge: Number(form.surcharge) || 50000,
+      threshold: Number(form.threshold) || 4,
+      surcharge: form.surcharge === "" || form.surcharge == null ? 50000 : Number(form.surcharge),
     };
 
     setCatalog((prev) =>
@@ -1512,7 +1516,7 @@ export default function App() {
       )
     );
 
-    setNewItemForms({ ...newItemForms, [catId]: { name: "", price: "", mode: "pax", capacity: 4, threshold: 2, surcharge: 50000 } });
+    setNewItemForms({ ...newItemForms, [catId]: { name: "", price: "", mode: "pax", capacity: 4, threshold: 4, surcharge: 50000 } });
     logUserActivity(`Added new vendor item "${newItem.name}" to category ${catId}`);
   };
 
@@ -3580,6 +3584,56 @@ Write an enticing, structured, high-converting WhatsApp proposal using appropria
                       <option value="flat">Flat / Qty</option>
                       <option value="tier">Tiered</option>
                     </select>
+                    {(newItemForms[cat.id]?.mode || "pax") === "unit" && (
+                      <>
+                    <input
+                      type="number"
+                      min="1"
+                      placeholder="Pax per unit"
+                      title="Pax per unit"
+                      value={newItemForms[cat.id]?.capacity ?? 4}
+                      onChange={(e) =>
+                        setNewItemForms({
+                          ...newItemForms,
+                          [cat.id]: { ...newItemForms[cat.id], capacity: e.target.value },
+                        })
+                      }
+                      style={{ width: 110, padding: "6px 8px", borderRadius: 6, border: `1px solid ${THEME.border}`, fontSize: 12, background: "#FFF", color: "#132422" }}
+                    />
+                      </>
+                    )}
+                    {newItemForms[cat.id]?.mode === "tier" && (
+                      <>
+                    <input
+                      type="number"
+                      min="1"
+                      placeholder="Base price covers up to (pax)"
+                      title="Base price covers up to (pax)"
+                      value={newItemForms[cat.id]?.threshold ?? 4}
+                      onChange={(e) =>
+                        setNewItemForms({
+                          ...newItemForms,
+                          [cat.id]: { ...newItemForms[cat.id], threshold: e.target.value },
+                        })
+                      }
+                      style={{ width: 110, padding: "6px 8px", borderRadius: 6, border: `1px solid ${THEME.border}`, fontSize: 12, background: "#FFF", color: "#132422" }}
+                    />
+                    <input
+                      type="number"
+                      min="1"
+                      placeholder="Extra per pax above that (IDR)"
+                      title="Extra per pax above that (IDR)"
+                      value={newItemForms[cat.id]?.surcharge ?? 50000}
+                      onChange={(e) =>
+                        setNewItemForms({
+                          ...newItemForms,
+                          [cat.id]: { ...newItemForms[cat.id], surcharge: e.target.value },
+                        })
+                      }
+                      style={{ width: 110, padding: "6px 8px", borderRadius: 6, border: `1px solid ${THEME.border}`, fontSize: 12, background: "#FFF", color: "#132422" }}
+                    />
+                      </>
+                    )}
                     <button
                       onClick={() => handleAddNewItemToCategory(cat.id)}
                       style={{ padding: "6px 12px", borderRadius: 6, background: COLORS.profit, color: "#FFF", border: "none", fontWeight: 700, fontSize: 12, cursor: "pointer" }}
