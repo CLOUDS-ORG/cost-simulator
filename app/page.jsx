@@ -342,6 +342,10 @@ function getAutoRuleForItem(catId, itemName = "", item = null) {
     if (lower.includes("sharing") || lower.includes("certified") || lower.includes("dive")) {
       return { mode: "pax", capacity: 1, threshold: 0, surcharge: 0 };
     }
+    // Private snorkeling "N Place": group price covers up to 4 pax, +50,000 per extra pax.
+    if (/\d\s*place/.test(lower)) {
+      return { mode: "tier", capacity: 4, threshold: 4, surcharge: 50000 };
+    }
     return { mode: "unit", capacity: 4, threshold: 0, surcharge: 0 };
   }
   return { mode: "flat", capacity: 4, threshold: 2, surcharge: 50000 };
