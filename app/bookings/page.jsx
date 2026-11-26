@@ -3,8 +3,11 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { supabase, supabaseConfigured } from "../lib/supabase";
 import {
+  FORM_OPTIONS,
   PACKAGE_TEMPLATES,
+  TEMPLATE_FOR_PACKAGE,
   baliDate,
+  boatTimesFromVendor,
   bookingFromQuote,
   emptyBooking,
   fillInclusions,
@@ -34,10 +37,18 @@ export default function BookingsPage() {
   const [quoteFilter, setQuoteFilter] = useState("open");
   const [editing, setEditing] = useState(null);
   const [error, setError] = useState("");
+  const [optionRows, setOptionRows] = useState([]);
+  const [optionsError, setOptionsError] = useState("");
 
   const viewOnlyRole = auth.profile?.role === "Booking Staff"; // may view and edit bookings, nothing else
   const today = baliDate(0);
   const tomorrow = baliDate(1);
+
+  const loadOptions = useCallback(async () => {
+    const r = await supabase.from("booking_options").select("*").order("category").order("sort_order").order("value");
+    if (r.error) setOptionsError(r.error.message);
+    else { setOptionsError(""); setOptionRows(r.data || []); }
+  }, []);
 
   const load = useCallback(async () => {
     // Booking Staff own no quotes, so the database returns none for them.
@@ -74,8 +85,9 @@ export default function BookingsPage() {
       if (!p || p.status !== "Approved") return setAuth({ state: "loggedout", profile: null });
       setAuth({ state: "ok", profile: p });
       load();
+      loadOptions();
     })();
-  }, [load]);
+  }, [load, loadOptions]);
 
   const bookedQuoteIds = useMemo(() => new Set(bookings.filter((b) => b.quote_id).map((b) => b.quote_id)), [bookings]);
 
@@ -132,6 +144,17 @@ export default function BookingsPage() {
       })
       .sort((a, z) => (z.savedAt || "").localeCompare(a.savedAt || ""));
   }, [quotes, quoteFilter, bookedQuoteIds]);
+
+  // Dropdown lists: from the database, falling back to the built-in Google Form lists if a category is empty.
+  const options = useMemo(() => {
+    const out = {};
+    for (const cat of Object.keys(FORM_OPTIONS)) {
+      const fromDb = optionRows.filter((r) => r.category === cat).map((r) => r.value);
+      out[cat] = fromDb.length ? fromDb : FORM_OPTIONS[cat];
+    }
+    return out;
+  }, [optionRows]);
+  const canManageLists = auth.profile?.role === "GOD" || auth.profile?.can_edit_catalog === true;
 
   const suggestions = useMemo(() => {
     const uniq = (key) => [...new Set(bookings.map((b) => b[key]).filter(Boolean))].sort();
@@ -214,7 +237,10 @@ export default function BookingsPage() {
         )}
 
         <div className="mb-4 flex gap-2">
-          {(viewOnlyRole ? [["bookings", "Bookings"]] : [["bookings", "Bookings"], ["quotes", "Quotes"]]).map(([k, label]) => (
+          {(viewOnlyRole
+            ? [["bookings", "Bookings"]]
+            : [["bookings", "Bookings"], ["quotes", "Quotes"], ...(canManageLists ? [["lists", "Vendor lists"]] : [])]
+          ).map(([k, label]) => (
             <button
               key={k}
               onClick={() => setTab(k)}
@@ -274,6 +300,10 @@ export default function BookingsPage() {
           </>
         )}
 
+        {tab === "lists" && canManageLists && (
+          <ListsManager rows={optionRows} error={optionsError} onChanged={loadOptions} />
+        )}
+
         {tab === "quotes" && (
           <>
             <div className="mb-3 flex flex-wrap gap-2">
@@ -324,7 +354,7 @@ export default function BookingsPage() {
         )}
       </div>
 
-      {editing && <BookingForm initial={editing} suggestions={suggestions} onSave={save} onClose={() => setEditing(null)} />}
+      {editing && <BookingForm initial={editing} suggestions={suggestions} options={options} onSave={save} onClose={() => setEditing(null)} />}
     </Shell>
   );
 }
@@ -366,18 +396,83 @@ function BookingCard({ b, today, tomorrow, onEdit }) {
   );
 }
 
-function BookingForm({ initial, suggestions, onSave, onClose }) {
-  const [b, setB] = useState({ ...initial, guest_names: initial.guest_names?.length ? initial.guest_names : [""] });
+// Dropdown with the Google Form's choices. A value that is not in the list (older bookings, new agents)
+// shows as "Other" with a text box, so nothing typed before is lost.
+function Choice({ label, value, onChange, options, required, placeholder }) {
+  const known = options.includes(value);
+  const [other, setOther] = useState(Boolean(value) && !known);
+  return (
+    <div>
+      <label className={labelCls}>{label}</label>
+      <select
+        required={required && !other}
+        className={inputCls}
+        value={other ? "__other" : value}
+        onChange={(e) => {
+          if (e.target.value === "__other") {
+            setOther(true);
+            onChange("");
+          } else {
+            setOther(false);
+            onChange(e.target.value);
+          }
+        }}
+      >
+        <option value="">Select…</option>
+        {options.map((o) => <option key={o} value={o}>{o}</option>)}
+        <option value="__other">Other (type it)…</option>
+      </select>
+      {other && (
+        <input required={required} className={`${inputCls} mt-2`} placeholder={placeholder || "Type here"} value={value} onChange={(e) => onChange(e.target.value)} />
+      )}
+    </div>
+  );
+}
+
+function BookingForm({ initial, suggestions, options, onSave, onClose }) {
+  const [b, setB] = useState({
+    ...initial,
+    guest_names: initial.guest_names?.length ? initial.guest_names : [""],
+    boat_vendor: initial.boat_vendor || [],
+    inclusions: initial.inclusions || [],
+  });
+  const standardIncl = options.inclusions;
+  const [customIncl, setCustomIncl] = useState((initial.inclusions || []).filter((x) => !standardIncl.includes(x)).join("\n"));
   const [saving, setSaving] = useState(false);
   const set = (patch) => setB((prev) => ({ ...prev, ...patch }));
 
-  const applyTemplate = (name) => {
-    const t = PACKAGE_TEMPLATES[name];
-    if (!t) return;
-    set({ package: t.package, inclusions: fillInclusions(t.inclusions, b.restaurant) });
+  const setGuest = (i, v) => set({ guest_names: b.guest_names.map((n, idx) => (idx === i ? v : n)) });
+
+  // Tour package: the dropdown fills the wording; "Exotic 4 Places" also fills the standard inclusion lines.
+  const exoticText = PACKAGE_TEMPLATES.Exotic.package;
+  const packageSelect = options.tourPackages.includes(b.package) ? b.package : b.package === exoticText ? "Exotic 4 Places" : b.package ? "__other" : "";
+  const pickPackage = (v) => {
+    if (v === "__other") return;
+    const tpl = PACKAGE_TEMPLATES[TEMPLATE_FOR_PACKAGE[v]];
+    if (tpl) {
+      const lines = fillInclusions(tpl.inclusions, b.restaurant);
+      setCustomIncl(lines.filter((x) => !standardIncl.includes(x)).join("\n"));
+      set({ package: tpl.package, inclusions: lines });
+    } else {
+      set({ package: v });
+    }
   };
 
-  const setGuest = (i, v) => set({ guest_names: b.guest_names.map((n, idx) => (idx === i ? v : n)) });
+  const setInclusions = (checked, customText) =>
+    set({ inclusions: [...standardIncl.filter((x) => checked.includes(x)), ...customText.split("\n")] });
+  const toggleIncl = (name) => {
+    const checked = standardIncl.filter((x) => b.inclusions.includes(x));
+    setInclusions(checked.includes(name) ? checked.filter((x) => x !== name) : [...checked, name], customIncl);
+  };
+
+  // Boat vendor: ticking a "07.30-16.30 SANJAYA" style option fills the two boat times below (still editable).
+  const toggleBoat = (name) => {
+    const next = b.boat_vendor.includes(name) ? b.boat_vendor.filter((x) => x !== name) : [...b.boat_vendor, name];
+    const patch = { boat_vendor: next };
+    const times = boatTimesFromVendor(next.find((x) => boatTimesFromVendor(x)));
+    if (times) Object.assign(patch, { boat_sanur: times.sanur, boat_panida: times.panida });
+    set(patch);
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -390,17 +485,26 @@ function BookingForm({ initial, suggestions, onSave, onClose }) {
     <datalist id={id}>{list.map((v) => <option key={v} value={v} />)}</datalist>
   );
 
+  const agentOptions = options.agents;
+  const checkbox = "flex items-start gap-2 text-sm text-slate-800";
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 p-0 sm:p-6">
       <form onSubmit={submit} className="mx-auto w-full max-w-2xl rounded-none bg-white p-4 sm:rounded-2xl sm:p-6">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-900">{b.id ? "Edit booking" : "New booking"}{b.quote_id ? ` · from ${b.quote_id}` : ""}</h2>
+          <h2 className="text-lg font-bold text-slate-900">{b.id ? "Edit booking" : "Input booking"}{b.quote_id ? ` · from ${b.quote_id}` : ""}</h2>
           <button type="button" onClick={onClose} className="rounded-lg px-3 py-1 text-slate-500">Close</button>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
+          <Choice label="Name of agent *" required value={b.agent} onChange={(v) => set({ agent: v })} options={agentOptions} placeholder="Agent name" />
           <div>
-            <label className={labelCls}>Date of activity</label>
+            <label className={labelCls}>PIC agent</label>
+            <input className={inputCls} value={b.pic_agent} onChange={(e) => set({ pic_agent: e.target.value })} />
+          </div>
+
+          <div>
+            <label className={labelCls}>Day of activity *</label>
             <input type="date" required className={inputCls} value={b.activity_date} onChange={(e) => set({ activity_date: e.target.value })} />
           </div>
           <div>
@@ -413,10 +517,10 @@ function BookingForm({ initial, suggestions, onSave, onClose }) {
           </div>
 
           <div className="sm:col-span-2">
-            <label className={labelCls}>Name of guest (include Mr./Ms.)</label>
+            <label className={labelCls}>Guest name * (include Mr./Ms., one guest per line)</label>
             {b.guest_names.map((n, i) => (
               <div key={i} className="mb-2 flex gap-2">
-                <input className={inputCls} placeholder="Mr. Noskov Aleksei" value={n} onChange={(e) => setGuest(i, e.target.value)} />
+                <input required={i === 0} className={inputCls} placeholder="Mr. Noskov Aleksei" value={n} onChange={(e) => setGuest(i, e.target.value)} />
                 {b.guest_names.length > 1 && (
                   <button type="button" className="rounded-lg border border-slate-300 px-3 text-slate-600" onClick={() => set({ guest_names: b.guest_names.filter((_, idx) => idx !== i) })}>
                     ×
@@ -429,47 +533,39 @@ function BookingForm({ initial, suggestions, onSave, onClose }) {
             </button>
           </div>
 
+          <Choice label="Nationality *" required value={b.nationality} onChange={(v) => set({ nationality: v })} options={options.nationalities} placeholder="e.g. GERMANY" />
           <div>
-            <label className={labelCls}>Nationality</label>
-            <input className={inputCls} value={b.nationality} onChange={(e) => set({ nationality: e.target.value })} />
-          </div>
-          <div>
-            <label className={labelCls}>Total pax</label>
-            <input type="number" min="1" className={inputCls} value={b.pax} onChange={(e) => set({ pax: e.target.value })} />
-          </div>
-
-          <div>
-            <label className={labelCls}>Name of agent</label>
-            <input list="dl-agent" className={inputCls} value={b.agent} onChange={(e) => set({ agent: e.target.value })} />
-            {dl("dl-agent", suggestions.agent)}
-          </div>
-          <div>
-            <label className={labelCls}>Hotel</label>
-            <input className={inputCls} value={b.hotel} onChange={(e) => set({ hotel: e.target.value })} />
+            <label className={labelCls}>Total pax *</label>
+            <input type="number" min="1" required className={inputCls} value={b.pax} onChange={(e) => set({ pax: e.target.value })} />
           </div>
 
           <div className="sm:col-span-2">
-            <label className={labelCls}>Tour package</label>
-            <div className="mb-2 flex flex-wrap gap-2">
-              {Object.keys(PACKAGE_TEMPLATES).map((name) => (
-                <button key={name} type="button" onClick={() => applyTemplate(name)} className="rounded-full border border-teal-700 px-3 py-1 text-sm font-semibold text-teal-800">
-                  Use “{name}” template
-                </button>
+            <label className={labelCls}>Tour package *</label>
+            <select required className={inputCls} value={packageSelect} onChange={(e) => pickPackage(e.target.value)}>
+              <option value="">Select…</option>
+              {options.tourPackages.map((o) => <option key={o} value={o}>{o}</option>)}
+              {packageSelect === "__other" && <option value="__other">Other / custom wording</option>}
+            </select>
+            <p className="mb-1 mt-2 text-xs text-slate-500">Wording printed on the passenger list (edit if needed):</p>
+            <textarea rows={2} className={inputCls} value={b.package} onChange={(e) => set({ package: e.target.value })} />
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className={labelCls}>Special request</label>
+            <textarea rows={2} className={inputCls} placeholder="Pick up at 06.00AM from Grand Hyatt Hotel" value={b.special_request} onChange={(e) => set({ special_request: e.target.value })} />
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className={labelCls}>Boat vendor (fast boat)</label>
+            <div className="grid gap-1 sm:grid-cols-2">
+              {options.boatVendors.map((o) => (
+                <label key={o} className={checkbox}>
+                  <input type="checkbox" className="mt-1" checked={b.boat_vendor.includes(o)} onChange={() => toggleBoat(o)} />
+                  <span>{o}</span>
+                </label>
               ))}
             </div>
-            <textarea rows={3} className={inputCls} value={b.package} onChange={(e) => set({ package: e.target.value })} />
           </div>
-
-          <div>
-            <label className={labelCls}>Pick-up time</label>
-            <input className={inputCls} placeholder="06.00" value={b.pickup_time} onChange={(e) => set({ pickup_time: e.target.value })} />
-          </div>
-          <div>
-            <label className={labelCls}>Restaurant</label>
-            <input list="dl-rest" className={inputCls} placeholder="TA Restaurant (Booked by ABS)" value={b.restaurant} onChange={(e) => set({ restaurant: e.target.value })} />
-            {dl("dl-rest", suggestions.restaurant)}
-          </div>
-
           <div>
             <label className={labelCls}>Boat departure Sanur</label>
             <input className={inputCls} placeholder="07.30 hrs Sanjaya Fast Boat" value={b.boat_sanur} onChange={(e) => set({ boat_sanur: e.target.value })} />
@@ -480,24 +576,56 @@ function BookingForm({ initial, suggestions, onSave, onClose }) {
           </div>
 
           <div>
+            <label className={labelCls}>Transport vendor / Driver Bali</label>
+            <input list="dl-driver" className={inputCls} value={b.driver} onChange={(e) => set({ driver: e.target.value })} />
+            {dl("dl-driver", [...new Set([...options.transportVendors, ...suggestions.driver])])}
+          </div>
+          <div>
+            <label className={labelCls}>Car unit</label>
+            <input className={inputCls} value={b.car_unit} onChange={(e) => set({ car_unit: e.target.value })} />
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className={labelCls}>Inclusion</label>
+            <div className="grid gap-1 sm:grid-cols-2">
+              {standardIncl.map((o) => (
+                <label key={o} className={checkbox}>
+                  <input type="checkbox" className="mt-1" checked={b.inclusions.includes(o)} onChange={() => toggleIncl(o)} />
+                  <span>{o}</span>
+                </label>
+              ))}
+            </div>
+            <p className="mb-1 mt-3 text-xs text-slate-500">Other inclusion lines (one per line; lines with “ABS” print in red):</p>
+            <textarea
+              rows={4}
+              className={inputCls}
+              value={customIncl}
+              onChange={(e) => {
+                setCustomIncl(e.target.value);
+                setInclusions(standardIncl.filter((x) => b.inclusions.includes(x)), e.target.value);
+              }}
+            />
+          </div>
+
+          <Choice label="Snorkeling vendor" value={b.snorkeling_vendor} onChange={(v) => set({ snorkeling_vendor: v })} options={options.snorkelingVendors} />
+          <div>
+            <label className={labelCls}>Hotel Bali</label>
+            <input className={inputCls} value={b.hotel} onChange={(e) => set({ hotel: e.target.value })} />
+          </div>
+
+          <Choice label="Lunch vendor" value={b.restaurant} onChange={(v) => set({ restaurant: v })} options={options.lunchVendors} placeholder="e.g. ORCA BC (Booked by ABS)" />
+
+          <div className="sm:col-span-2 mt-2 border-t border-slate-200 pt-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Also printed on the passenger list
+          </div>
+          <div>
+            <label className={labelCls}>Pick-up time</label>
+            <input className={inputCls} placeholder="06.00" value={b.pickup_time} onChange={(e) => set({ pickup_time: e.target.value })} />
+          </div>
+          <div>
             <label className={labelCls}>Guide</label>
             <input list="dl-guide" className={inputCls} value={b.guide} onChange={(e) => set({ guide: e.target.value })} />
             {dl("dl-guide", suggestions.guide)}
-          </div>
-          <div>
-            <label className={labelCls}>Driver Bali</label>
-            <input list="dl-driver" className={inputCls} value={b.driver} onChange={(e) => set({ driver: e.target.value })} />
-            {dl("dl-driver", suggestions.driver)}
-          </div>
-
-          <div className="sm:col-span-2">
-            <label className={labelCls}>Special request</label>
-            <input className={inputCls} placeholder="Pick up at 06.00AM from Grand Hyatt Hotel" value={b.special_request} onChange={(e) => set({ special_request: e.target.value })} />
-          </div>
-
-          <div className="sm:col-span-2">
-            <label className={labelCls}>Inclusion (one per line; lines with “ABS” print in red)</label>
-            <textarea rows={7} className={inputCls} value={b.inclusions.join("\n")} onChange={(e) => set({ inclusions: e.target.value.split("\n") })} />
           </div>
         </div>
 
@@ -508,6 +636,98 @@ function BookingForm({ initial, suggestions, onSave, onClose }) {
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+const LIST_LABELS = {
+  agents: "Agents",
+  nationalities: "Nationalities",
+  tourPackages: "Tour packages",
+  boatVendors: "Boat vendors",
+  transportVendors: "Transport vendors",
+  inclusions: "Inclusions",
+  snorkelingVendors: "Snorkeling vendors",
+  lunchVendors: "Lunch vendors",
+};
+
+// Add, rename and delete the dropdown choices used by the booking form.
+// Changing a list never changes existing bookings (they keep the text they were saved with).
+function ListsManager({ rows, error, onChanged }) {
+  const [cat, setCat] = useState("agents");
+  const [newValue, setNewValue] = useState("");
+  const [msg, setMsg] = useState("");
+  const items = rows.filter((r) => r.category === cat);
+
+  const run = async (promise) => {
+    const { error: err } = await promise;
+    setMsg(err ? `Could not save: ${err.message}` : "");
+    await onChanged();
+  };
+
+  const add = async (e) => {
+    e.preventDefault();
+    const value = newValue.trim();
+    if (!value) return;
+    if (items.some((r) => r.value.toLowerCase() === value.toLowerCase())) return setMsg(`"${value}" is already in the list.`);
+    const order = items.reduce((m, r) => Math.max(m, r.sort_order || 0), 0) + 1;
+    setNewValue("");
+    await run(supabase.from("booking_options").insert({ category: cat, value, sort_order: order }));
+  };
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4">
+      <p className="mb-3 text-sm text-slate-600">
+        These are the dropdown choices in the booking form. Changing a list does not change bookings that are already saved.
+      </p>
+      {error && (
+        <div className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-800">
+          Could not load the lists: {error}. Has supabase/booking-options.sql been run?
+        </div>
+      )}
+      {msg && <div className="mb-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">{msg}</div>}
+
+      <div className="mb-4 flex flex-wrap gap-2">
+        {Object.entries(LIST_LABELS).map(([k, label]) => (
+          <button
+            key={k}
+            onClick={() => { setCat(k); setMsg(""); }}
+            className={`rounded-full px-3 py-1.5 text-sm font-medium ${cat === k ? "bg-slate-900 text-white" : "bg-white border border-slate-300 text-slate-700"}`}
+          >
+            {label} ({rows.filter((r) => r.category === k).length})
+          </button>
+        ))}
+      </div>
+
+      <form onSubmit={add} className="mb-3 flex gap-2">
+        <input className={inputCls} placeholder={`Add to ${LIST_LABELS[cat]}…`} value={newValue} onChange={(e) => setNewValue(e.target.value)} />
+        <button className="rounded-lg bg-teal-700 px-4 py-2 font-semibold text-white">Add</button>
+      </form>
+
+      <ul className="grid gap-2">
+        {items.map((r) => (
+          <li key={r.id} className="flex gap-2">
+            <input
+              className={inputCls}
+              defaultValue={r.value}
+              onBlur={(e) => {
+                const v = e.target.value.trim();
+                if (v && v !== r.value) run(supabase.from("booking_options").update({ value: v }).eq("id", r.id));
+                else e.target.value = r.value;
+              }}
+            />
+            <button
+              type="button"
+              className="rounded-lg border border-slate-300 px-3 text-slate-600"
+              title="Remove from the list"
+              onClick={() => run(supabase.from("booking_options").delete().eq("id", r.id))}
+            >
+              ×
+            </button>
+          </li>
+        ))}
+        {items.length === 0 && <li className="text-sm text-slate-500">Nothing here yet.</li>}
+      </ul>
     </div>
   );
 }
