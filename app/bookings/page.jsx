@@ -14,6 +14,7 @@ import {
   longDate,
   missingFields,
 } from "./lib";
+import { ACCOUNTING_ROLES } from "./costing";
 
 const idr = (n) => "Rp" + Math.round(n || 0).toLocaleString("id-ID");
 
@@ -204,6 +205,9 @@ export default function BookingsPage() {
           <p className="text-xs text-slate-500">Alam Bali Santhi · {auth.profile.name}</p>
         </div>
         <div className="flex gap-2">
+          {ACCOUNTING_ROLES.includes(auth.profile?.role) && (
+            <Link href="/bookings/accounting" className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">Accounting</Link>
+          )}
           {!viewOnlyRole && (
             <Link href="/" className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">Cost simulator</Link>
           )}
