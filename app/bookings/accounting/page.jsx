@@ -4,6 +4,7 @@ import Link from "next/link";
 import { supabase, supabaseConfigured } from "../../lib/supabase";
 import { baliDate, longDate } from "../lib";
 import ThemeToggle from "../ThemeToggle";
+import AppMenu from "../AppMenu";
 import { ACCOUNTING_ROLES, costBooking, guessArea, hotelSegments, idr, transferAreas } from "../costing";
 
 // Accounting view: every booking with its cost, worked out from the cost simulator catalog.
@@ -182,8 +183,8 @@ export default function AccountingPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <ThemeToggle />
-          <Link href="/bookings" className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">Bookings</Link>
           <button onClick={exportCsv} className="rounded-lg bg-teal-700 px-3 py-2 text-sm font-semibold text-white">Download CSV (Google Sheets)</button>
+          <AppMenu profile={auth.profile} />
         </div>
       </header>
 

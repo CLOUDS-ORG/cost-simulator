@@ -2117,8 +2117,8 @@ Write an enticing, structured, high-converting WhatsApp proposal using appropria
             </div>
 
             <a
-              href="/bookings"
-              title="Bookings and passenger lists"
+              href="/portal"
+              title="Home: bookings, accounting and more"
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -2133,7 +2133,7 @@ Write an enticing, structured, high-converting WhatsApp proposal using appropria
                 textDecoration: "none",
               }}
             >
-              <CalendarDays size={14} /> Bookings
+              <CalendarDays size={14} /> Home
             </a>
 
             <button

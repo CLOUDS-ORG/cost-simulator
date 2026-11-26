@@ -114,6 +114,7 @@ export default function PassengerListPage() {
       <style>{css}</style>
       <div className="pl-toolbar">
         <ThemeToggle />
+        <Link href="/portal" style={{ color: "#0f766e", fontWeight: 700 }}>← Home</Link>
         <button onClick={() => window.print()}>Print / Save as PDF</button>
         <span>{state.rows.length} passenger list{state.rows.length > 1 ? "s" : ""}. In the print window choose “Save as PDF”.</span>
       </div>

@@ -16,6 +16,7 @@ import {
 } from "./lib";
 import { ACCOUNTING_ROLES } from "./costing";
 import ThemeToggle from "./ThemeToggle";
+import AppMenu from "./AppMenu";
 
 const idr = (n) => "Rp" + Math.round(n || 0).toLocaleString("id-ID");
 
@@ -86,6 +87,9 @@ export default function BookingsPage() {
       const { data: p } = await supabase.from("profiles").select("*").eq("id", uid).maybeSingle();
       if (!p || p.status !== "Approved") return setAuth({ state: "loggedout", profile: null });
       setAuth({ state: "ok", profile: p });
+      const want = new URLSearchParams(window.location.search).get("tab");
+      if (want === "quotes" && p.role !== "Booking Staff") setTab("quotes");
+      if (want === "lists" && (p.role === "GOD" || p.can_edit_catalog === true)) setTab("lists");
       load();
       loadOptions();
     })();
@@ -207,12 +211,6 @@ export default function BookingsPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <ThemeToggle />
-          {ACCOUNTING_ROLES.includes(auth.profile?.role) && (
-            <Link href="/bookings/accounting" className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">Accounting</Link>
-          )}
-          {!viewOnlyRole && (
-            <Link href="/" className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">Cost simulator</Link>
-          )}
           {!viewOnlyRole && (
             <button
               onClick={() => setEditing(emptyBooking())}
@@ -221,14 +219,7 @@ export default function BookingsPage() {
               + New booking
             </button>
           )}
-          {viewOnlyRole && (
-            <button
-              onClick={async () => { await supabase.auth.signOut(); window.location.href = "/"; }}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700"
-            >
-              Log out
-            </button>
-          )}
+          <AppMenu profile={auth.profile} />
         </div>
       </header>
 
