@@ -2791,7 +2791,7 @@ Write an enticing, structured, high-converting WhatsApp proposal using appropria
               </div>
 
               {/* Cost & Profit Margin Bar */}
-              {canSeeCosts ? (
+              {canSeeCosts || canAdjustMargin ? (
                 <div style={{ borderTop: `1px solid ${THEME.border}`, paddingTop: 12, paddingBottom: 6 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                     <label style={{ fontSize: 12.5, fontWeight: 700, color: THEME.textMain, display: "flex", alignItems: "center", gap: 6 }}>
@@ -2821,10 +2821,12 @@ Write an enticing, structured, high-converting WhatsApp proposal using appropria
                       Margin is fixed for your account. Ask the admin if you need to adjust it.
                     </div>
                   )}
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700, color: THEME.textMain, marginTop: 8 }}>
-                    <span>Vendor Cost: {idr(totals.cost)}</span>
-                    <span style={{ color: COLORS.profit }}>Est. Profit: {idr(totals.profit)}</span>
-                  </div>
+                  {canSeeCosts && (
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700, color: THEME.textMain, marginTop: 8 }}>
+                      <span>Vendor Cost: {idr(totals.cost)}</span>
+                      <span style={{ color: COLORS.profit }}>Est. Profit: {idr(totals.profit)}</span>
+                    </div>
+                  )}
                 </div>
               ) : null}
             </div>
