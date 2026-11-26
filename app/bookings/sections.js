@@ -1,4 +1,4 @@
-import { UserCheck, CalendarDays, FileText, ListChecks, Calculator, Compass, LayoutDashboard, ShieldCheck } from "lucide-react";
+import { UserCheck, CalendarDays, FileText, ListChecks, Calculator, Compass, LayoutDashboard, ShieldCheck, Tags } from "lucide-react";
 
 // What each account may do in the bookings app. profiles.section_access = null means "the role's defaults";
 // a list means exactly those permissions. Mirrors has_section() in supabase/booking-permissions.sql.
@@ -67,6 +67,7 @@ export function sectionsFor(profile) {
   if (canOpen(profile, "bookings") && canOpen(profile, "lists")) out.push({ key: "lists", href: "/bookings?tab=lists", title: "Vendor lists", desc: "Dropdown lists used in the booking form: agents, boats, drivers, lunch and more.", Icon: ListChecks });
   if (canOpen(profile, "guides")) out.push({ key: "guides", href: "/guides", title: "Guide schedule", desc: "Who works, who is off and which bookings still need a guide, like the Schedule sheet.", Icon: UserCheck });
   if (canOpen(profile, "accounting")) out.push({ key: "accounting", href: "/bookings/accounting", title: "Accounting", desc: "Cost and sale price of every booking, hotel areas, CSV for Google Sheets.", Icon: Calculator });
+  if (canOpen(profile, "accounting")) out.push({ key: "rates", href: "/bookings/rates", title: "Contract rates", desc: "Master data of the agent contract rates (CR). Update rates; bookings without a price use them.", Icon: Tags });
   if (canOpen(profile, "accounts")) out.push({ key: "accounts", href: "/accounts", title: "Accounts & permissions", desc: "See every account, add people, change roles and decide who can open what.", Icon: ShieldCheck });
   if (canOpen(profile, "simulator")) out.push({ key: "simulator", href: "/", title: "Cost simulator", desc: "Build and price a tour quote.", Icon: Compass });
   return out;

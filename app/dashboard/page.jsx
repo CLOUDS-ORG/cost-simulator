@@ -24,6 +24,7 @@ export default function DashboardPage() {
   const [catalog, setCatalog] = useState(null);
   const [areaRows, setAreaRows] = useState([]);
   const [financeRows, setFinanceRows] = useState([]);
+  const [rates, setRates] = useState([]);
   const [quotes, setQuotes] = useState([]);
   const [online, setOnline] = useState([]);
   const [error, setError] = useState("");
@@ -57,6 +58,8 @@ export default function DashboardPage() {
       else setFinanceRows(fin.data || []);
       const qs = await supabase.from("quotes").select("data").order("updated_at", { ascending: false }).limit(1000);
       if (!qs.error) setQuotes((qs.data || []).map((r) => r.data));
+      const cr = await supabase.from("contract_rates").select("*");
+      if (!cr.error) setRates(cr.data || []); // no table yet (booking-rates.sql not run): prices just stay without CR
     })();
   }, [start, end]);
 
@@ -65,7 +68,7 @@ export default function DashboardPage() {
   const money = useMemo(() => {
     if (!catalog) return null;
     const areaMap = Object.fromEntries(areaRows.map((r) => [r.hotel_key, r.area]));
-    const maps = financeMaps(bookings, financeRows, quotes);
+    const maps = financeMaps(bookings, financeRows, quotes, rates);
     const rows = bookings
       .filter((b) => b.status !== "Cancelled")
       .map((b) => {
@@ -84,7 +87,7 @@ export default function DashboardPage() {
       losses: priced.filter((r) => r.profit < 0).sort((a, z) => a.profit - z.profit),
       checking: rows.filter((r) => r.cost.issues > 0).length,
     };
-  }, [bookings, catalog, areaRows, financeRows, quotes]);
+  }, [bookings, catalog, areaRows, financeRows, quotes, rates]);
 
   const upcoming = useMemo(
     () => bookings.filter((b) => b.status !== "Cancelled" && b.status !== "Done" && b.activity_date >= today),

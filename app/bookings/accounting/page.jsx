@@ -7,7 +7,7 @@ import ThemeToggle from "../ThemeToggle";
 import AppMenu from "../AppMenu";
 import { costBooking, guessArea, hotelSegments, idr, transferAreas } from "../costing";
 import { canOpen } from "../sections";
-import { financeMaps, salePriceFor } from "../finance";
+import { financeMaps, salePriceFor, contractCheck } from "../finance";
 
 // Accounting view: every booking with its cost, worked out from the cost simulator catalog.
 // Open to the roles in ACCOUNTING_ROLES only.
@@ -33,6 +33,7 @@ export default function AccountingPage() {
   const [areaRows, setAreaRows] = useState([]);
   const [financeRows, setFinanceRows] = useState([]);
   const [quotes, setQuotes] = useState([]);
+  const [rates, setRates] = useState([]);
   const [error, setError] = useState("");
   const [month, setMonth] = useState(baliDate(0).slice(0, 7));
   const [search, setSearch] = useState("");
@@ -65,6 +66,8 @@ export default function AccountingPage() {
     else setFinanceRows(fin.data || []);
     const qs = await supabase.from("quotes").select("data").order("updated_at", { ascending: false }).limit(1000);
     if (!qs.error) setQuotes((qs.data || []).map((r) => r.data));
+    const cr = await supabase.from("contract_rates").select("*");
+    if (!cr.error) setRates(cr.data || []); // no table yet (booking-rates.sql not run): no CR prices or checks
 
     const areas = await supabase.from("booking_hotel_areas").select("*");
     if (areas.error) setError((e) => e || `Could not load hotel areas: ${areas.error.message}. Has supabase/booking-accounting.sql been run?`);
@@ -85,7 +88,7 @@ export default function AccountingPage() {
     })();
   }, [load]);
 
-  const fin = useMemo(() => financeMaps(bookings, financeRows, quotes), [bookings, financeRows, quotes]);
+  const fin = useMemo(() => financeMaps(bookings, financeRows, quotes, rates), [bookings, financeRows, quotes, rates]);
 
   const saveSale = async (b, text) => {
     const clean = String(text).replace(/[^\d.]/g, "");
@@ -117,9 +120,11 @@ export default function AccountingPage() {
       .map((b) => {
         const cost = costBooking(b, catalog, areaMap);
         const sale = salePriceFor(b, fin);
-        return { b, cost, sale, profit: sale.price === null ? null : sale.price - cost.total };
+        // Compare a price entered by hand (or taken from a quote) with the agent's contract rate.
+        const crc = sale.source === "entered" || sale.source === "quote" ? contractCheck(b, sale.price, rates) : null;
+        return { b, cost, sale, crc, profit: sale.price === null ? null : sale.price - cost.total };
       });
-  }, [bookings, catalog, areaMap, fin, month, search, showCancelled]);
+  }, [bookings, catalog, areaMap, fin, rates, month, search, showCancelled]);
 
   const summary = useMemo(() => {
     const active = rows.filter((r) => r.b.status !== "Cancelled");
@@ -160,8 +165,8 @@ export default function AccountingPage() {
   };
 
   const exportCsv = () => {
-    const head = ["Date", "Status", "Agent", "Guests", "Pax", "Package", "Hotel", "Cost total (IDR)", "Sale price (IDR)", "Profit (IDR)", "Cost lines", "Needs checking"];
-    const body = rows.map(({ b, cost, sale, profit }) => [
+    const head = ["Date", "Status", "Agent", "Guests", "Pax", "Package", "Hotel", "Cost total (IDR)", "Sale price (IDR)", "Profit (IDR)", "Price source", "CR total (IDR)", "CR check", "Cost lines", "Needs checking"];
+    const body = rows.map(({ b, cost, sale, crc, profit }) => [
       b.activity_date,
       b.status,
       b.agent,
@@ -172,6 +177,9 @@ export default function AccountingPage() {
       Math.round(cost.total),
       sale.price === null ? "" : Math.round(sale.price),
       profit === null ? "" : Math.round(profit),
+      sale.source || "",
+      crc ? Math.round(crc.total) : "",
+      crc ? crc.state : "",
       cost.lines.map((l) => `${l.label}: ${Math.round(l.cost)}`).join(" | "),
       cost.lines.filter((l) => l.status !== "ok").map((l) => `${l.status}: ${l.label}`).join(" | "),
     ]);
@@ -291,7 +299,7 @@ export default function AccountingPage() {
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ b, cost, sale, profit }) => (
+              {rows.map(({ b, cost, sale, crc, profit }) => (
                 <React.Fragment key={b.id}>
                   <tr
                     className={`cursor-pointer border-t border-slate-100 hover:bg-slate-50 ${b.status === "Cancelled" ? "opacity-50" : ""}`}
@@ -310,16 +318,25 @@ export default function AccountingPage() {
                       <input
                         key={`${b.id}-${sale.price}-${sale.source}`}
                         inputMode="numeric"
-                        className={`${inputCls} w-32 py-1 text-right text-sm ${sale.source === "quote" ? "border-amber-400 bg-amber-50" : ""}`}
+                        className={`${inputCls} w-32 py-1 text-right text-sm ${sale.source === "quote" ? "border-amber-400 bg-amber-50" : sale.source === "contract" ? "border-sky-400 bg-sky-50" : ""}`}
                         placeholder="Rp"
                         defaultValue={sale.price === null ? "" : Math.round(sale.price)}
-                        title={sale.source === "quote" ? "Taken from the quote. Type to replace it." : "Amount the guest paid"}
+                        title={sale.source === "quote" ? "Taken from the quote. Type to replace it." : sale.source === "contract" ? "Contract rate x pax (Contract rates page). Type to replace it." : "Amount the guest paid"}
                         onBlur={(e) => {
                           const v = e.target.value.trim();
                           const current = sale.price === null ? "" : String(Math.round(sale.price));
                           if (v !== current) saveSale(b, v);
                         }}
                       />
+                      {sale.source === "contract" && <div className="mt-0.5 text-[10px] font-semibold text-sky-700">CR price</div>}
+                      {crc && crc.state !== "ok" && (
+                        <div
+                          className={`mt-0.5 text-[10px] font-semibold ${crc.state === "below" ? "text-red-700" : "text-amber-700"}`}
+                          title={`Contract: ${idr(crc.perPax)} per pax x ${b.pax} = ${idr(crc.total)} (${crc.row.pax_min}-${crc.row.pax_max} pax rate)`}
+                        >
+                          {crc.state === "below" ? "Below CR" : "Above CR"} {idr(Math.abs(crc.diff))}
+                        </div>
+                      )}
                     </td>
                     <td className={`whitespace-nowrap px-3 py-2 text-right font-semibold ${profit !== null && profit < 0 ? "text-red-700" : ""}`}>
                       {profit === null ? <span className="font-normal text-slate-400">-</span> : idr(profit)}
