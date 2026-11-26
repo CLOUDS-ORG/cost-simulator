@@ -29,7 +29,7 @@ export default function BookingsPage() {
   const [bookings, setBookings] = useState([]);
   const [quotes, setQuotes] = useState([]);
   const [tab, setTab] = useState("bookings");
-  const [range, setRange] = useState("upcoming");
+  const [range, setRange] = useState("all");
   const [search, setSearch] = useState("");
   const [quoteFilter, setQuoteFilter] = useState("open");
   const [editing, setEditing] = useState(null);
@@ -39,13 +39,23 @@ export default function BookingsPage() {
   const tomorrow = baliDate(1);
 
   const load = useCallback(async () => {
-    const [b, q] = await Promise.all([
-      supabase.from("bookings").select("*").order("activity_date", { ascending: true }).limit(1000),
-      supabase.from("quotes").select("data").order("updated_at", { ascending: false }).limit(500),
-    ]);
-    if (b.error) setError(`Could not load bookings: ${b.error.message}. Has supabase/bookings.sql been run?`);
+    const q = await supabase.from("quotes").select("data").order("updated_at", { ascending: false }).limit(500);
+    const all = [];
+    let failed = null;
+    for (let from = 0; ; from += 1000) {
+      const page = await supabase
+        .from("bookings")
+        .select("*")
+        .order("activity_date", { ascending: true })
+        .order("created_at", { ascending: true })
+        .range(from, from + 999);
+      if (page.error) { failed = page.error; break; }
+      all.push(...page.data);
+      if (page.data.length < 1000) break;
+    }
+    if (failed) setError(`Could not load bookings: ${failed.message}. Has supabase/bookings.sql been run?`);
     else setError("");
-    setBookings(b.data || []);
+    setBookings(all);
     setQuotes((q.data || []).map((r) => r.data));
   }, []);
 
@@ -81,7 +91,12 @@ export default function BookingsPage() {
         if (!s) return true;
         return [b.guest_names.join(" "), b.agent, b.package, b.hotel, b.guide, b.driver].join(" ").toLowerCase().includes(s);
       })
-      .sort((a, z) => (range === "past" ? z.activity_date.localeCompare(a.activity_date) : a.activity_date.localeCompare(z.activity_date)));
+      .sort((a, z) => {
+        const aPast = a.activity_date < today;
+        const zPast = z.activity_date < today;
+        if (aPast !== zPast) return aPast ? 1 : -1; // upcoming and today first
+        return aPast ? z.activity_date.localeCompare(a.activity_date) : a.activity_date.localeCompare(z.activity_date);
+      });
   }, [bookings, range, search, today, tomorrow]);
 
   // Problems worth fixing before the day: gaps tomorrow, and a guide on two bookings the same day.
@@ -226,11 +241,21 @@ export default function BookingsPage() {
               )}
             </div>
 
+            <p className="mb-2 text-xs text-slate-500">{visibleBookings.length} of {bookings.length} bookings</p>
             {visibleBookings.length === 0 && <p className="py-10 text-center text-slate-500">No bookings here.</p>}
             <div className="grid gap-3">
-              {visibleBookings.map((b) => (
-                <BookingCard key={b.id} b={b} today={today} tomorrow={tomorrow} onEdit={() => setEditing(b)} />
-              ))}
+              {visibleBookings.map((b, i) => {
+                const isPast = b.activity_date < today;
+                const prevPast = i > 0 && visibleBookings[i - 1].activity_date < today;
+                const heading =
+                  i === 0 ? (isPast ? "Past bookings" : "Today and upcoming") : isPast && !prevPast ? "Past bookings" : null;
+                return (
+                  <React.Fragment key={b.id}>
+                    {heading && range === "all" && <h2 className="mt-3 text-sm font-bold uppercase tracking-wide text-slate-500">{heading}</h2>}
+                    <BookingCard b={b} today={today} tomorrow={tomorrow} onEdit={() => setEditing(b)} />
+                  </React.Fragment>
+                );
+              })}
             </div>
           </>
         )}
