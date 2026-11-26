@@ -255,7 +255,7 @@ export default function GuidesPage() {
               <tr>
                 <th className={`${cell} sticky left-0 z-10 min-w-[120px] bg-white text-left font-bold`}>GUIDE</th>
                 {days.map((d) => (
-                  <th key={d.iso} className={`${cell} min-w-[44px] font-semibold ${d.iso === today ? "bg-teal-100 text-teal-800" : d.dow === 0 || d.dow === 6 ? "bg-slate-100" : ""}`}>
+                  <th key={d.iso} className={`${cell} min-w-[54px] font-semibold ${d.iso === today ? "bg-teal-100 text-teal-800" : d.dow === 0 || d.dow === 6 ? "bg-slate-100" : ""}`}>
                     <div className="text-[10px] font-normal text-slate-500">{WEEKDAY[d.dow]}</div>
                     {d.n}
                   </th>
