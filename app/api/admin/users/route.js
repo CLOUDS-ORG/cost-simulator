@@ -4,6 +4,9 @@ import { createClient } from "@supabase/supabase-js";
 // Uses the secret service-role key, which must NEVER be exposed to the browser.
 
 const FREELANCE_ROLES = ["Freelance Sales", "Partner Agency / B2B Reseller"];
+// Booking Staff only see and edit bookings: no costs, quotes, catalog or dashboard, whatever the form says.
+const BOOKING_ROLE = "Booking Staff";
+const isRestricted = (role) => FREELANCE_ROLES.includes(role) || role === BOOKING_ROLE;
 const EDITABLE_ROLES = [
   "Staff Agent",
   "Freelance Sales",
@@ -11,6 +14,7 @@ const EDITABLE_ROLES = [
   "Tour Guide / Field Lead",
   "Operations & Finance",
   "Admin Manager",
+  BOOKING_ROLE,
 ];
 
 function adminClient() {
@@ -110,7 +114,7 @@ export async function POST(request) {
     return json({ error: createErr?.message || "Could not create the account." }, 400);
   }
 
-  const isFreelance = FREELANCE_ROLES.includes(role);
+  const isFreelance = isRestricted(role);
   const row = {
     id: created.user.id,
     username,
@@ -124,7 +128,7 @@ export async function POST(request) {
     can_override_costs: isFreelance ? false : !!body.canOverrideCosts,
     can_edit_presets: isFreelance ? false : !!body.canEditPresets,
     can_see_all_dashboard_quotes: isFreelance ? false : !!body.canSeeAllDashboardQuotes,
-    can_access_dashboard: body.canAccessDashboard !== false,
+    can_access_dashboard: role === BOOKING_ROLE ? false : body.canAccessDashboard !== false,
   };
 
   const { data: profile, error: profileErr } = await admin.from("profiles").insert(row).select().single();
@@ -173,7 +177,7 @@ export async function PATCH(request) {
     if (!target) return json({ error: "Account not found." }, 404);
     if (target.role === "GOD") return json({ error: "The master admin's rules cannot be changed." }, 400);
 
-    const isFreelance = FREELANCE_ROLES.includes(role);
+    const isFreelance = isRestricted(role);
     const update = {
       name,
       role,
@@ -183,7 +187,7 @@ export async function PATCH(request) {
       can_override_costs: isFreelance ? false : !!rules.canOverrideCosts,
       can_edit_presets: isFreelance ? false : !!rules.canEditPresets,
       can_see_all_dashboard_quotes: isFreelance ? false : !!rules.canSeeAllDashboardQuotes,
-      can_access_dashboard: rules.canAccessDashboard !== false,
+      can_access_dashboard: role === BOOKING_ROLE ? false : rules.canAccessDashboard !== false,
     };
     const { data: updated, error: updateErr } = await admin
       .from("profiles")

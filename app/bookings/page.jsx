@@ -35,10 +35,12 @@ export default function BookingsPage() {
   const [editing, setEditing] = useState(null);
   const [error, setError] = useState("");
 
+  const viewOnlyRole = auth.profile?.role === "Booking Staff"; // may view and edit bookings, nothing else
   const today = baliDate(0);
   const tomorrow = baliDate(1);
 
   const load = useCallback(async () => {
+    // Booking Staff own no quotes, so the database returns none for them.
     const q = await supabase.from("quotes").select("data").order("updated_at", { ascending: false }).limit(500);
     const all = [];
     let failed = null;
@@ -179,13 +181,25 @@ export default function BookingsPage() {
           <p className="text-xs text-slate-500">Alam Bali Santhi · {auth.profile.name}</p>
         </div>
         <div className="flex gap-2">
-          <Link href="/" className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">Cost simulator</Link>
-          <button
-            onClick={() => setEditing(emptyBooking())}
-            className="rounded-lg bg-teal-700 px-3 py-2 text-sm font-semibold text-white"
-          >
-            + New booking
-          </button>
+          {!viewOnlyRole && (
+            <Link href="/" className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">Cost simulator</Link>
+          )}
+          {!viewOnlyRole && (
+            <button
+              onClick={() => setEditing(emptyBooking())}
+              className="rounded-lg bg-teal-700 px-3 py-2 text-sm font-semibold text-white"
+            >
+              + New booking
+            </button>
+          )}
+          {viewOnlyRole && (
+            <button
+              onClick={async () => { await supabase.auth.signOut(); window.location.href = "/"; }}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700"
+            >
+              Log out
+            </button>
+          )}
         </div>
       </header>
 
@@ -200,7 +214,7 @@ export default function BookingsPage() {
         )}
 
         <div className="mb-4 flex gap-2">
-          {[["bookings", "Bookings"], ["quotes", "Quotes"]].map(([k, label]) => (
+          {(viewOnlyRole ? [["bookings", "Bookings"]] : [["bookings", "Bookings"], ["quotes", "Quotes"]]).map(([k, label]) => (
             <button
               key={k}
               onClick={() => setTab(k)}

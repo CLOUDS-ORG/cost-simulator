@@ -658,6 +658,11 @@ export default function App() {
     return currentUser;
   }, [currentUser, impersonatedUserId, usersList]);
 
+  // Booking Staff never use the cost simulator: send them straight to the bookings page.
+  useEffect(() => {
+    if (currentUser?.role === "Booking Staff" && typeof window !== "undefined") window.location.replace("/bookings");
+  }, [currentUser]);
+
   const isRealGodUser = currentUser?.role === "GOD";
   const isGodUser = effectiveUser?.role === "GOD";
   const isFreelanceSales = effectiveUser?.role === "Freelance Sales" || effectiveUser?.role === "Partner Agency / B2B Reseller";
@@ -3982,6 +3987,7 @@ Write an enticing, structured, high-converting WhatsApp proposal using appropria
                       <option value="Tour Guide / Field Lead">Tour Guide / Field Lead</option>
                       <option value="Operations & Finance">Operations & Finance</option>
                       <option value="Admin Manager">Admin Manager</option>
+                      <option value="Booking Staff">Booking Staff (bookings only)</option>
                     </select>
                   </div>
 
@@ -4167,6 +4173,7 @@ Write an enticing, structured, high-converting WhatsApp proposal using appropria
                     <option value="Tour Guide / Field Lead">Tour Guide / Field Lead</option>
                     <option value="Operations & Finance">Operations & Finance</option>
                     <option value="Admin Manager">Admin Manager</option>
+                    <option value="Booking Staff">Booking Staff (bookings only)</option>
                   </select>
                 </div>
                 <div>
