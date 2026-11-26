@@ -24,3 +24,42 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Bookings pages: the light/dark switch (app/bookings/ThemeToggle.jsx) adds "abs-dark" to <html>.
+   Instead of rewriting every class, the Tailwind colours used there are remapped for dark mode. */
+html.abs-dark {
+  color-scheme: dark;
+  --color-white: #111c2e;
+  --color-slate-50: #0b1220;
+  --color-slate-100: #172338;
+  --color-slate-200: #2a3850;
+  --color-slate-300: #3b4b66;
+  --color-slate-400: #7a8aa3;
+  --color-slate-500: #94a3b8;
+  --color-slate-600: #a8b5c9;
+  --color-slate-700: #cbd5e1;
+  --color-slate-800: #e2e8f0;
+  --color-slate-900: #f1f5f9;
+  --color-red-50: #3b1217;
+  --color-red-100: #4a1a20;
+  --color-red-700: #fca5a5;
+  --color-red-800: #fca5a5;
+  --color-amber-50: #3a2a0a;
+  --color-amber-100: #4a3410;
+  --color-amber-300: #92400e;
+  --color-amber-400: #b45309;
+  --color-amber-700: #fcd34d;
+  --color-amber-800: #fcd34d;
+  --color-amber-900: #fde68a;
+  --color-emerald-100: #0f3d2e;
+  --color-emerald-700: #6ee7b7;
+  --color-emerald-800: #6ee7b7;
+}
+html.abs-dark body { background: #0b1220; color: #f1f5f9; }
+html.abs-dark .text-teal-700,
+html.abs-dark .text-teal-800 { color: #5eead4; }
+html.abs-dark .text-white { color: #ffffff; }
+html.abs-light body { background: #f8fafc; color: #0f172a; }
+/* Passenger list: the sheets stay white like paper; only the grey area around them and the toolbar change. */
+html.abs-dark .pl-root { background: #0b1220; }
+html.abs-dark .pl-toolbar { color: #e2e8f0; }

@@ -15,6 +15,7 @@ import {
   missingFields,
 } from "./lib";
 import { ACCOUNTING_ROLES } from "./costing";
+import ThemeToggle from "./ThemeToggle";
 
 const idr = (n) => "Rp" + Math.round(n || 0).toLocaleString("id-ID");
 
@@ -204,7 +205,8 @@ export default function BookingsPage() {
           <h1 className="text-lg font-bold text-slate-900">Bookings</h1>
           <p className="text-xs text-slate-500">Alam Bali Santhi · {auth.profile.name}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <ThemeToggle />
           {ACCOUNTING_ROLES.includes(auth.profile?.role) && (
             <Link href="/bookings/accounting" className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">Accounting</Link>
           )}
@@ -263,7 +265,7 @@ export default function BookingsPage() {
                 <button
                   key={k}
                   onClick={() => setRange(k)}
-                  className={`rounded-full px-3 py-1.5 text-sm font-medium ${range === k ? "bg-slate-900 text-white" : "bg-white border border-slate-300 text-slate-700"}`}
+                  className={`rounded-full px-3 py-1.5 text-sm font-medium ${range === k ? "bg-teal-700 text-white" : "bg-white border border-slate-300 text-slate-700"}`}
                 >
                   {label}
                 </button>
@@ -315,7 +317,7 @@ export default function BookingsPage() {
                 <button
                   key={k}
                   onClick={() => setQuoteFilter(k)}
-                  className={`rounded-full px-3 py-1.5 text-sm font-medium ${quoteFilter === k ? "bg-slate-900 text-white" : "bg-white border border-slate-300 text-slate-700"}`}
+                  className={`rounded-full px-3 py-1.5 text-sm font-medium ${quoteFilter === k ? "bg-teal-700 text-white" : "bg-white border border-slate-300 text-slate-700"}`}
                 >
                   {label}
                 </button>
@@ -364,7 +366,7 @@ export default function BookingsPage() {
 }
 
 function Shell({ children }) {
-  return <div className="min-h-screen bg-slate-50">{children}</div>;
+  return <div className="min-h-screen bg-slate-50 text-slate-900">{children}</div>;
 }
 
 // Guest names as a tidy list: groups of up to 4 show in full, bigger groups show the first 3 and a "+N more" toggle.
@@ -519,7 +521,7 @@ function BookingForm({ initial, suggestions, options, onSave, onClose }) {
   const checkbox = "flex items-start gap-2 text-sm text-slate-800";
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 p-0 sm:p-6">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 p-0 sm:p-6">
       <form onSubmit={submit} className="mx-auto w-full max-w-2xl rounded-none bg-white p-4 sm:rounded-2xl sm:p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-bold text-slate-900">{b.id ? "Edit booking" : "Input booking"}{b.quote_id ? ` · from ${b.quote_id}` : ""}</h2>
@@ -722,7 +724,7 @@ function ListsManager({ rows, error, onChanged }) {
           <button
             key={k}
             onClick={() => { setCat(k); setMsg(""); }}
-            className={`rounded-full px-3 py-1.5 text-sm font-medium ${cat === k ? "bg-slate-900 text-white" : "bg-white border border-slate-300 text-slate-700"}`}
+            className={`rounded-full px-3 py-1.5 text-sm font-medium ${cat === k ? "bg-teal-700 text-white" : "bg-white border border-slate-300 text-slate-700"}`}
           >
             {label} ({rows.filter((r) => r.category === k).length})
           </button>

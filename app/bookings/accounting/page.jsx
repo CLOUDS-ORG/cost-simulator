@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { supabase, supabaseConfigured } from "../../lib/supabase";
 import { baliDate, longDate } from "../lib";
+import ThemeToggle from "../ThemeToggle";
 import { ACCOUNTING_ROLES, costBooking, guessArea, hotelSegments, idr, transferAreas } from "../costing";
 
 // Accounting view: every booking with its cost, worked out from the cost simulator catalog.
@@ -179,7 +180,8 @@ export default function AccountingPage() {
           <h1 className="text-lg font-bold text-slate-900">Accounting · booking costs</h1>
           <p className="text-xs text-slate-500">Alam Bali Santhi · {auth.profile.name} · costs come from the Cost simulator catalog</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <ThemeToggle />
           <Link href="/bookings" className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">Bookings</Link>
           <button onClick={exportCsv} className="rounded-lg bg-teal-700 px-3 py-2 text-sm font-semibold text-white">Download CSV (Google Sheets)</button>
         </div>
@@ -322,7 +324,7 @@ export default function AccountingPage() {
 }
 
 function Shell({ children }) {
-  return <div className="min-h-screen bg-slate-50">{children}</div>;
+  return <div className="min-h-screen bg-slate-50 text-slate-900">{children}</div>;
 }
 
 function Stat({ label, value, tone, hint }) {

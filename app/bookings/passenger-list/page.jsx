@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase, supabaseConfigured } from "../../lib/supabase";
 import { fillInclusions, longDate } from "../lib";
+import ThemeToggle from "../ThemeToggle";
 
 // Printable passenger list in the Alam Bali Santhi format.
 // Open with /bookings/passenger-list?id=<booking id>[&id=<another>] and use Print > Save as PDF.
@@ -112,6 +113,7 @@ export default function PassengerListPage() {
     <div className="pl-root">
       <style>{css}</style>
       <div className="pl-toolbar">
+        <ThemeToggle />
         <button onClick={() => window.print()}>Print / Save as PDF</button>
         <span>{state.rows.length} passenger list{state.rows.length > 1 ? "s" : ""}. In the print window choose “Save as PDF”.</span>
       </div>
