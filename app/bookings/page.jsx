@@ -20,6 +20,9 @@ import { canOpen } from "./sections";
 
 const idr = (n) => "Rp" + Math.round(n || 0).toLocaleString("id-ID");
 
+// A booking can have several guides in one field ("Wayan, Komang").
+const splitNames = (text) => String(text || "").split(/[,;&\n]+|\band\b/i).map((x) => x.trim()).filter(Boolean);
+
 const QUOTE_BADGE = {
   Draft: "bg-slate-100 text-slate-700",
   Sent: "bg-amber-100 text-amber-800",
@@ -37,6 +40,11 @@ export default function BookingsPage() {
   const [tab, setTab] = useState("bookings");
   const [range, setRange] = useState("all");
   const [search, setSearch] = useState("");
+  const [month, setMonth] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
+  const [agentFilter, setAgentFilter] = useState("");
+  const [picFilter, setPicFilter] = useState("");
+  const [guideFilter, setGuideFilter] = useState("");
   const [quoteFilter, setQuoteFilter] = useState("open");
   const [editing, setEditing] = useState(null);
   const [error, setError] = useState("");
@@ -112,9 +120,14 @@ export default function BookingsPage() {
         if (range === "past") return b.activity_date < today;
         return true;
       })
+      .filter((b) => !month || b.activity_date.startsWith(month))
+      .filter((b) => !dateFilter || b.activity_date === dateFilter)
+      .filter((b) => !agentFilter || b.agent === agentFilter)
+      .filter((b) => !picFilter || b.pic_agent === picFilter)
+      .filter((b) => !guideFilter || splitNames(b.guide).includes(guideFilter))
       .filter((b) => {
         if (!s) return true;
-        return [b.guest_names.join(" "), b.agent, b.package, b.hotel, b.guide, b.driver].join(" ").toLowerCase().includes(s);
+        return [b.guest_names.join(" "), b.agent, b.pic_agent, b.package, b.hotel, b.guide, b.driver].join(" ").toLowerCase().includes(s);
       })
       .sort((a, z) => {
         const aPast = a.activity_date < today;
@@ -122,7 +135,7 @@ export default function BookingsPage() {
         if (aPast !== zPast) return aPast ? 1 : -1; // upcoming and today first
         return aPast ? z.activity_date.localeCompare(a.activity_date) : a.activity_date.localeCompare(z.activity_date);
       });
-  }, [bookings, range, search, today, tomorrow]);
+  }, [bookings, range, search, month, dateFilter, agentFilter, picFilter, guideFilter, today, tomorrow]);
 
   // Problems worth fixing before the day: gaps tomorrow, and a guide on two bookings the same day.
   const alerts = useMemo(() => {
@@ -170,6 +183,20 @@ export default function BookingsPage() {
     const uniq = (key) => [...new Set(bookings.map((b) => b[key]).filter(Boolean))].sort();
     return { guide: uniq("guide"), driver: uniq("driver"), agent: uniq("agent"), restaurant: uniq("restaurant") };
   }, [bookings]);
+
+  // Choices for the filter dropdowns, from the bookings themselves.
+  const filterOptions = useMemo(() => {
+    const uniq = (list) => [...new Set(list.filter(Boolean))].sort((a, z) => a.localeCompare(z));
+    return {
+      months: [...new Set(bookings.map((b) => b.activity_date.slice(0, 7)))].sort(),
+      agents: uniq(bookings.map((b) => b.agent)),
+      pics: uniq(bookings.map((b) => b.pic_agent)),
+      guides: uniq(bookings.flatMap((b) => splitNames(b.guide))),
+    };
+  }, [bookings]);
+  const filtersOn = Boolean(month || dateFilter || agentFilter || picFilter || guideFilter || search);
+  const clearFilters = () => { setMonth(""); setDateFilter(""); setAgentFilter(""); setPicFilter(""); setGuideFilter(""); setSearch(""); };
+  const filteredIds = visibleBookings.filter((b) => b.status !== "Cancelled").map((b) => b.id);
 
   const save = async (b) => {
     const row = {
@@ -289,7 +316,60 @@ export default function BookingsPage() {
               )}
             </div>
 
-            <p className="mb-2 text-xs text-slate-500">{visibleBookings.length} of {bookings.length} bookings</p>
+            <div className="mb-3 grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
+              <label className="block">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Month</span>
+                <select className={inputCls} value={month} onChange={(e) => { setMonth(e.target.value); setDateFilter(""); if (e.target.value) setRange("all"); }}>
+                  <option value="">All months</option>
+                  {filterOptions.months.map((m) => (
+                    <option key={m} value={m}>{new Date(`${m}-01T00:00:00Z`).toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" })}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Date</span>
+                <input type="date" className={inputCls} value={dateFilter} onChange={(e) => { setDateFilter(e.target.value); if (e.target.value) { setMonth(""); setRange("all"); } }} />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Agent</span>
+                <select className={inputCls} value={agentFilter} onChange={(e) => setAgentFilter(e.target.value)}>
+                  <option value="">All agents</option>
+                  {filterOptions.agents.map((a) => <option key={a}>{a}</option>)}
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">PIC</span>
+                <select className={inputCls} value={picFilter} onChange={(e) => setPicFilter(e.target.value)}>
+                  <option value="">All PICs</option>
+                  {filterOptions.pics.map((a) => <option key={a}>{a}</option>)}
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Guide</span>
+                <select className={inputCls} value={guideFilter} onChange={(e) => setGuideFilter(e.target.value)}>
+                  <option value="">All guides</option>
+                  {filterOptions.guides.map((a) => <option key={a}>{a}</option>)}
+                </select>
+              </label>
+              <div className="flex items-end">
+                {filtersOn && (
+                  <button onClick={clearFilters} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">Clear filters</button>
+                )}
+              </div>
+            </div>
+
+            <p className="mb-2 flex flex-wrap items-center gap-x-3 text-xs text-slate-500">
+              <span>{visibleBookings.length} of {bookings.length} bookings</span>
+              {filtersOn && filteredIds.length > 0 && filteredIds.length <= 40 && (
+                <a
+                  href={`/bookings/passenger-list?${filteredIds.map((id) => `id=${id}`).join("&")}`}
+                  target="_blank"
+                  className="font-semibold text-teal-800"
+                >
+                  Passenger lists for these {filteredIds.length}
+                </a>
+              )}
+            </p>
             {visibleBookings.length === 0 && <p className="py-10 text-center text-slate-500">No bookings here.</p>}
             <div className="grid gap-3">
               {visibleBookings.map((b, i) => {
