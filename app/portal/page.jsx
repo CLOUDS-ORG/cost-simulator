@@ -22,7 +22,6 @@ export default function PortalPage() {
     })();
   }, []);
 
-  const Shell = ({ children }) => <div className="min-h-screen bg-slate-50 text-slate-900">{children}</div>;
 
   if (auth.state === "loading") return <Shell><p className="p-6 text-slate-500">Loading…</p></Shell>;
   if (auth.state === "noconfig") return <Shell><p className="p-6 text-red-700">Supabase is not configured.</p></Shell>;
@@ -71,4 +70,8 @@ export default function PortalPage() {
       </div>
     </Shell>
   );
+}
+
+function Shell({ children }) {
+  return <div className="min-h-screen bg-slate-50 text-slate-900">{children}</div>;
 }

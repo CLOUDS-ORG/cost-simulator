@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { Menu, X, LogOut, LayoutGrid } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { sectionsFor } from "./sections";
+import { startPresence } from "./presence";
 
 // Side menu that opens from the right. It lists only what this person's role may open.
 export default function AppMenu({ profile }) {
@@ -15,6 +16,8 @@ export default function AppMenu({ profile }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
+
+  useEffect(() => { startPresence(profile); }, [profile]);
 
   const items = sectionsFor(profile);
   const isActive = (href) => {

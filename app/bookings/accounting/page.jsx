@@ -5,7 +5,9 @@ import { supabase, supabaseConfigured } from "../../lib/supabase";
 import { baliDate, longDate } from "../lib";
 import ThemeToggle from "../ThemeToggle";
 import AppMenu from "../AppMenu";
-import { ACCOUNTING_ROLES, costBooking, guessArea, hotelSegments, idr, transferAreas } from "../costing";
+import { costBooking, guessArea, hotelSegments, idr, transferAreas } from "../costing";
+import { canOpen } from "../sections";
+import { financeMaps, salePriceFor } from "../finance";
 
 // Accounting view: every booking with its cost, worked out from the cost simulator catalog.
 // Open to the roles in ACCOUNTING_ROLES only.
@@ -29,6 +31,8 @@ export default function AccountingPage() {
   const [bookings, setBookings] = useState([]);
   const [catalog, setCatalog] = useState(null);
   const [areaRows, setAreaRows] = useState([]);
+  const [financeRows, setFinanceRows] = useState([]);
+  const [quotes, setQuotes] = useState([]);
   const [error, setError] = useState("");
   const [month, setMonth] = useState(baliDate(0).slice(0, 7));
   const [search, setSearch] = useState("");
@@ -56,6 +60,12 @@ export default function AccountingPage() {
     else if (!cat.data?.value) setError("The cost catalog has not been saved yet. Open the Cost simulator > Catalog and save it once.");
     else setCatalog(cat.data.value);
 
+    const fin = await supabase.from("booking_finance").select("*");
+    if (fin.error) setError((e) => e || `Could not load sale prices: ${fin.error.message}. Has supabase/booking-dashboard.sql been run?`);
+    else setFinanceRows(fin.data || []);
+    const qs = await supabase.from("quotes").select("data").order("updated_at", { ascending: false }).limit(1000);
+    if (!qs.error) setQuotes((qs.data || []).map((r) => r.data));
+
     const areas = await supabase.from("booking_hotel_areas").select("*");
     if (areas.error) setError((e) => e || `Could not load hotel areas: ${areas.error.message}. Has supabase/booking-accounting.sql been run?`);
     else setAreaRows(areas.data || []);
@@ -69,11 +79,24 @@ export default function AccountingPage() {
       if (!uid) return setAuth({ state: "loggedout", profile: null });
       const { data: p } = await supabase.from("profiles").select("*").eq("id", uid).maybeSingle();
       if (!p || p.status !== "Approved") return setAuth({ state: "loggedout", profile: null });
-      if (!ACCOUNTING_ROLES.includes(p.role)) return setAuth({ state: "denied", profile: p });
+      if (!canOpen(p, "accounting")) return setAuth({ state: "denied", profile: p });
       setAuth({ state: "ok", profile: p });
       load();
     })();
   }, [load]);
+
+  const fin = useMemo(() => financeMaps(bookings, financeRows, quotes), [bookings, financeRows, quotes]);
+
+  const saveSale = async (b, text) => {
+    const clean = String(text).replace(/[^\d.]/g, "");
+    const res = clean === ""
+      ? await supabase.from("booking_finance").delete().eq("booking_id", b.id)
+      : await supabase.from("booking_finance").upsert({ booking_id: b.id, sale_price: Number(clean), updated_at: new Date().toISOString() });
+    if (res.error) setError(`Could not save the sale price: ${res.error.message}`);
+    else setError("");
+    const fresh = await supabase.from("booking_finance").select("*");
+    if (!fresh.error) setFinanceRows(fresh.data || []);
+  };
 
   const areaMap = useMemo(() => Object.fromEntries(areaRows.map((r) => [r.hotel_key, r.area])), [areaRows]);
   const areas = useMemo(() => (catalog ? transferAreas(catalog) : []), [catalog]);
@@ -91,8 +114,12 @@ export default function AccountingPage() {
       .filter((b) => month === "all" || b.activity_date.startsWith(month))
       .filter((b) => showCancelled || b.status !== "Cancelled")
       .filter((b) => !s || [b.guest_names.join(" "), b.agent, b.package, b.hotel].join(" ").toLowerCase().includes(s))
-      .map((b) => ({ b, cost: costBooking(b, catalog, areaMap) }));
-  }, [bookings, catalog, areaMap, month, search, showCancelled]);
+      .map((b) => {
+        const cost = costBooking(b, catalog, areaMap);
+        const sale = salePriceFor(b, fin);
+        return { b, cost, sale, profit: sale.price === null ? null : sale.price - cost.total };
+      });
+  }, [bookings, catalog, areaMap, fin, month, search, showCancelled]);
 
   const summary = useMemo(() => {
     const active = rows.filter((r) => r.b.status !== "Cancelled");
@@ -100,6 +127,9 @@ export default function AccountingPage() {
       count: active.length,
       pax: active.reduce((s, r) => s + (Number(r.b.pax) || 0), 0),
       total: active.reduce((s, r) => s + r.cost.total, 0),
+      sales: active.reduce((s, r) => s + (r.sale.price ?? 0), 0),
+      profit: active.filter((r) => r.profit !== null).reduce((s, r) => s + r.profit, 0),
+      noPrice: active.filter((r) => r.sale.price === null).length,
       missing: active.reduce((s, r) => s + r.cost.missing, 0),
       bookingsWithIssues: active.filter((r) => r.cost.issues > 0).length,
     };
@@ -130,8 +160,8 @@ export default function AccountingPage() {
   };
 
   const exportCsv = () => {
-    const head = ["Date", "Status", "Agent", "Guests", "Pax", "Package", "Hotel", "Cost total (IDR)", "Cost per pax (IDR)", "Cost lines", "Needs checking"];
-    const body = rows.map(({ b, cost }) => [
+    const head = ["Date", "Status", "Agent", "Guests", "Pax", "Package", "Hotel", "Cost total (IDR)", "Sale price (IDR)", "Profit (IDR)", "Cost lines", "Needs checking"];
+    const body = rows.map(({ b, cost, sale, profit }) => [
       b.activity_date,
       b.status,
       b.agent,
@@ -140,7 +170,8 @@ export default function AccountingPage() {
       b.package,
       b.hotel,
       Math.round(cost.total),
-      Math.round(cost.perPax),
+      sale.price === null ? "" : Math.round(sale.price),
+      profit === null ? "" : Math.round(profit),
       cost.lines.map((l) => `${l.label}: ${Math.round(l.cost)}`).join(" | "),
       cost.lines.filter((l) => l.status !== "ok").map((l) => `${l.status}: ${l.label}`).join(" | "),
     ]);
@@ -202,10 +233,12 @@ export default function AccountingPage() {
           </label>
         </div>
 
-        <div className="mb-4 grid gap-3 sm:grid-cols-4">
+        <div className="mb-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <Stat label="Bookings" value={summary.count} />
           <Stat label="Pax" value={summary.pax} />
           <Stat label="Total cost" value={idr(summary.total)} />
+          <Stat label="Sales" value={idr(summary.sales)} hint={summary.noPrice ? `${summary.noPrice} without a sale price` : undefined} tone={summary.noPrice ? "warn" : undefined} />
+          <Stat label={summary.profit < 0 ? "Loss" : "Profit"} value={idr(summary.profit)} tone={summary.profit < 0 ? "bad" : undefined} hint="Only bookings with a sale price" />
           <Stat
             label="Need checking"
             value={`${summary.bookingsWithIssues} booking${summary.bookingsWithIssues === 1 ? "" : "s"}`}
@@ -252,12 +285,13 @@ export default function AccountingPage() {
                 <th className="px-3 py-2">Agent</th>
                 <th className="px-3 py-2 text-right">Pax</th>
                 <th className="px-3 py-2 text-right">Cost</th>
-                <th className="px-3 py-2 text-right">Per pax</th>
+                <th className="px-3 py-2 text-right">Sale price</th>
+                <th className="px-3 py-2 text-right">Profit</th>
                 <th className="px-3 py-2"></th>
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ b, cost }) => (
+              {rows.map(({ b, cost, sale, profit }) => (
                 <React.Fragment key={b.id}>
                   <tr
                     className={`cursor-pointer border-t border-slate-100 hover:bg-slate-50 ${b.status === "Cancelled" ? "opacity-50" : ""}`}
@@ -272,7 +306,24 @@ export default function AccountingPage() {
                     <td className="px-3 py-2">{b.agent}</td>
                     <td className="px-3 py-2 text-right">{b.pax}</td>
                     <td className="whitespace-nowrap px-3 py-2 text-right font-semibold">{idr(cost.total)}</td>
-                    <td className="whitespace-nowrap px-3 py-2 text-right text-slate-600">{idr(cost.perPax)}</td>
+                    <td className="whitespace-nowrap px-3 py-2 text-right" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        key={`${b.id}-${sale.price}-${sale.source}`}
+                        inputMode="numeric"
+                        className={`${inputCls} w-32 py-1 text-right text-sm ${sale.source === "quote" ? "border-amber-400 bg-amber-50" : ""}`}
+                        placeholder="Rp"
+                        defaultValue={sale.price === null ? "" : Math.round(sale.price)}
+                        title={sale.source === "quote" ? "Taken from the quote. Type to replace it." : "Amount the guest paid"}
+                        onBlur={(e) => {
+                          const v = e.target.value.trim();
+                          const current = sale.price === null ? "" : String(Math.round(sale.price));
+                          if (v !== current) saveSale(b, v);
+                        }}
+                      />
+                    </td>
+                    <td className={`whitespace-nowrap px-3 py-2 text-right font-semibold ${profit !== null && profit < 0 ? "text-red-700" : ""}`}>
+                      {profit === null ? <span className="font-normal text-slate-400">-</span> : idr(profit)}
+                    </td>
                     <td className="px-3 py-2 text-right">
                       {cost.missing > 0 && <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800">{cost.missing} missing</span>}
                       {cost.missing === 0 && cost.issues > 0 && <span className="rounded bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">{cost.issues} to check</span>}
@@ -280,7 +331,7 @@ export default function AccountingPage() {
                   </tr>
                   {open[b.id] && (
                     <tr className="bg-slate-50">
-                      <td colSpan={7} className="px-3 py-3">
+                      <td colSpan={8} className="px-3 py-3">
                         <table className="w-full text-left text-sm">
                           <tbody>
                             {cost.lines.map((l, i) => (
@@ -309,13 +360,13 @@ export default function AccountingPage() {
                 </React.Fragment>
               ))}
               {rows.length === 0 && (
-                <tr><td colSpan={7} className="px-3 py-8 text-center text-slate-500">{catalog ? "No bookings for this filter." : "Loading the cost catalog…"}</td></tr>
+                <tr><td colSpan={8} className="px-3 py-8 text-center text-slate-500">{catalog ? "No bookings for this filter." : "Loading the cost catalog…"}</td></tr>
               )}
             </tbody>
           </table>
         </div>
         <p className="mt-3 text-xs text-slate-500">
-          Amber “guess” = the booking did not say enough, so a default was used (for example the cheapest menu of a restaurant, or the Bali
+          Sale price in amber = taken from the Cost simulator quote; type a number to set the real amount. Amber “guess” = the booking did not say enough, so a default was used (for example the cheapest menu of a restaurant, or the Bali
           transfer area guessed from the hotel name). Red “no rate” = the catalog has no matching item, so it is not in the total yet.
           Bali transfers are priced per car (4 pax per car) like the cost simulator.
         </p>
@@ -329,7 +380,7 @@ function Shell({ children }) {
 }
 
 function Stat({ label, value, tone, hint }) {
-  const color = tone === "warn" ? "text-amber-700" : "text-slate-900";
+  const color = tone === "warn" ? "text-amber-700" : tone === "bad" ? "text-red-700" : "text-slate-900";
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-3">
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>

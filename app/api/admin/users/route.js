@@ -17,6 +17,9 @@ const EDITABLE_ROLES = [
   BOOKING_ROLE,
 ];
 
+// Pages of the bookings app that can be switched on or off per account (null = the role's default).
+const SECTION_KEYS = ["accounting", "dashboard"];
+
 function adminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -64,6 +67,7 @@ function toClient(p) {
     canEditPresets: p.can_edit_presets,
     canSeeAllDashboardQuotes: p.can_see_all_dashboard_quotes,
     canAccessDashboard: p.can_access_dashboard,
+    sectionAccess: p.section_access ?? null,
     createdAt: (p.created_at || "").slice(0, 10),
   };
 }
@@ -189,6 +193,14 @@ export async function PATCH(request) {
       can_see_all_dashboard_quotes: isFreelance ? false : !!rules.canSeeAllDashboardQuotes,
       can_access_dashboard: role === BOOKING_ROLE ? false : rules.canAccessDashboard !== false,
     };
+    // Only touched when the caller sends it (the Accounts page does, the old editor does not).
+    // An explicit list overrides the role default; restricted roles never get these pages.
+    if ("sectionAccess" in rules || isFreelance) {
+      update.section_access =
+        isFreelance || !Array.isArray(rules.sectionAccess)
+          ? null
+          : SECTION_KEYS.filter((k) => rules.sectionAccess.includes(k));
+    }
     const { data: updated, error: updateErr } = await admin
       .from("profiles")
       .update(update)
