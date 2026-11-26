@@ -20,9 +20,9 @@ const ROLES = [
 const RESTRICTED = ["Freelance Sales", "Partner Agency / B2B Reseller", "Booking Staff"];
 // Permissions a restricted role can never have (money and, for Booking Staff, quotes and the simulator).
 const BLOCKED = {
-  "Booking Staff": ["quotes", "dashboard", "accounting", "simulator"],
-  "Freelance Sales": ["dashboard", "accounting"],
-  "Partner Agency / B2B Reseller": ["dashboard", "accounting"],
+  "Booking Staff": ["quotes", "dashboard", "accounting", "simulator", "guides_edit"],
+  "Freelance Sales": ["dashboard", "accounting", "guides_edit"],
+  "Partner Agency / B2B Reseller": ["dashboard", "accounting", "guides_edit"],
 };
 
 const FLAGS = [

@@ -19,10 +19,10 @@ const EDITABLE_ROLES = [
 
 // Permissions of the bookings app that can be switched on or off per account (null = the role's defaults).
 // Keep in step with PERMISSIONS in app/bookings/sections.js and has_section() in supabase/booking-permissions.sql.
-const ALL_PERMS = ["bookings", "booking_add", "booking_edit", "quotes", "lists", "dashboard", "accounting", "simulator"];
+const ALL_PERMS = ["bookings", "booking_add", "booking_edit", "quotes", "lists", "guides", "guides_edit", "dashboard", "accounting", "simulator"];
 function allowedPerms(role) {
-  if (role === BOOKING_ROLE) return ["bookings", "booking_add", "booking_edit", "lists"]; // never money or quotes
-  if (FREELANCE_ROLES.includes(role)) return ALL_PERMS.filter((k) => k !== "dashboard" && k !== "accounting");
+  if (role === BOOKING_ROLE) return ["bookings", "booking_add", "booking_edit", "lists", "guides"]; // never money or quotes
+  if (FREELANCE_ROLES.includes(role)) return ALL_PERMS.filter((k) => k !== "dashboard" && k !== "accounting" && k !== "guides_edit");
   return ALL_PERMS;
 }
 const cleanAccess = (role, list) => (Array.isArray(list) ? allowedPerms(role).filter((k) => list.includes(k)) : null);
