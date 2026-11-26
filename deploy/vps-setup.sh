@@ -11,6 +11,22 @@ APP_DIR=/opt/cost-simulator
 PORT=3100
 REPO=https://github.com/CLOUDS-ORG/cost-simulator
 
+echo "==> Pre-flight: what is already using the web ports (80/443)?"
+LISTEN="$(ss -ltnpH 2>/dev/null | awk '$4 ~ /:(80|443)$/ {print}')"
+if [ -n "$LISTEN" ]; then
+  echo "$LISTEN"
+  if ! echo "$LISTEN" | grep -q nginx; then
+    echo
+    echo "!! Something other than nginx is already serving ports 80/443 on this server (shown above)."
+    echo "!! Stopping now so your existing site is not disturbed. Nothing was installed or changed."
+    echo "!! Send the output above to Claude and the setup will be adapted."
+    exit 1
+  fi
+  echo "nginx is already running here; only a new site for $DOMAIN will be added."
+else
+  echo "Nothing is using ports 80/443 yet."
+fi
+
 echo "==> Packages (nginx, certbot, git)"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y

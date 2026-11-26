@@ -10,11 +10,13 @@ Runs the Cost Simulator + Bookings app on your own VPS at a subdomain, with ngin
 
 ## First install (about 10 minutes)
 
+The script first checks whether something else already serves websites on this server. If it does (and it is not nginx), it stops before changing anything.
+
 1. hPanel > VPS > Manage > **Browser terminal** (or `ssh root@145.79.13.147`).
 2. Download and run the setup script:
 
    ```bash
-   curl -fsSL https://raw.githubusercontent.com/CLOUDS-ORG/cost-simulator/bookings-app/deploy/vps-setup.sh -o vps-setup.sh
+   curl -fsSL "https://raw.githubusercontent.com/CLOUDS-ORG/cost-simulator/bookings-app/deploy/vps-setup.sh?$(date +%s)" -o vps-setup.sh
    sudo bash vps-setup.sh app.alambalisanthi.com your-email@example.com
    ```
 
