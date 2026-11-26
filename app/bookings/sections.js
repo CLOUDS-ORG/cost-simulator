@@ -15,8 +15,12 @@ export const PERMISSIONS = [
   { key: "simulator", label: "Cost simulator" },
 ];
 const FINANCE_ROLES = ["Operations & Finance", "Admin Manager"];
+// Guide accounts only ever open their own bookings and their own guide schedule (the database enforces it too).
+export const GUIDE_ROLE = "Tour Guide / Field Lead";
+const GUIDE_PERMS = ["bookings", "guides"];
 
 function roleDefault(p, key) {
+  if (p.role === GUIDE_ROLE) return GUIDE_PERMS.includes(key);
   const staff = p.role === "Booking Staff";
   switch (key) {
     case "guides_edit":
@@ -48,6 +52,7 @@ export function canOpen(profile, key) {
   if (!profile) return false;
   if (profile.role === "GOD") return true;
   if (key === "accounts") return false;
+  if (profile.role === GUIDE_ROLE) return GUIDE_PERMS.includes(key);
   if (Array.isArray(profile.section_access)) return profile.section_access.includes(key);
   return roleDefault(profile, key);
 }

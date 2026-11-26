@@ -6,7 +6,8 @@ import { createClient } from "@supabase/supabase-js";
 const FREELANCE_ROLES = ["Freelance Sales", "Partner Agency / B2B Reseller"];
 // Booking Staff only see and edit bookings: no costs, quotes, catalog or dashboard, whatever the form says.
 const BOOKING_ROLE = "Booking Staff";
-const isRestricted = (role) => FREELANCE_ROLES.includes(role) || role === BOOKING_ROLE;
+const GUIDE_ROLE = "Tour Guide / Field Lead"; // sees only own bookings and own schedule (matched by account name)
+const isRestricted = (role) => FREELANCE_ROLES.includes(role) || role === BOOKING_ROLE || role === GUIDE_ROLE;
 const EDITABLE_ROLES = [
   "Staff Agent",
   "Freelance Sales",
@@ -21,6 +22,7 @@ const EDITABLE_ROLES = [
 // Keep in step with PERMISSIONS in app/bookings/sections.js and has_section() in supabase/booking-permissions.sql.
 const ALL_PERMS = ["bookings", "booking_add", "booking_edit", "quotes", "lists", "guides", "guides_edit", "dashboard", "accounting", "simulator"];
 function allowedPerms(role) {
+  if (role === GUIDE_ROLE) return ["bookings", "guides"]; // own bookings and own schedule only
   if (role === BOOKING_ROLE) return ["bookings", "booking_add", "booking_edit", "lists", "guides"]; // never money or quotes
   if (FREELANCE_ROLES.includes(role)) return ALL_PERMS.filter((k) => k !== "dashboard" && k !== "accounting" && k !== "guides_edit");
   return ALL_PERMS;
@@ -139,7 +141,7 @@ export async function POST(request) {
     can_override_costs: isFreelance ? false : !!body.canOverrideCosts,
     can_edit_presets: isFreelance ? false : !!body.canEditPresets,
     can_see_all_dashboard_quotes: isFreelance ? false : !!body.canSeeAllDashboardQuotes,
-    can_access_dashboard: role === BOOKING_ROLE ? false : body.canAccessDashboard !== false,
+    can_access_dashboard: role === BOOKING_ROLE || role === GUIDE_ROLE ? false : body.canAccessDashboard !== false,
     section_access: cleanAccess(role, body.sectionAccess),
   };
 
@@ -199,7 +201,7 @@ export async function PATCH(request) {
       can_override_costs: isFreelance ? false : !!rules.canOverrideCosts,
       can_edit_presets: isFreelance ? false : !!rules.canEditPresets,
       can_see_all_dashboard_quotes: isFreelance ? false : !!rules.canSeeAllDashboardQuotes,
-      can_access_dashboard: role === BOOKING_ROLE ? false : rules.canAccessDashboard !== false,
+      can_access_dashboard: role === BOOKING_ROLE || role === GUIDE_ROLE ? false : rules.canAccessDashboard !== false,
     };
     // The Accounts page sends the list; the old editor does not, so the saved list is kept (and trimmed to what the role may have).
     update.section_access = cleanAccess(role, "sectionAccess" in rules ? rules.sectionAccess : target.section_access);

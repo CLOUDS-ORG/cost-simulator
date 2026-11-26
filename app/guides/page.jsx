@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { supabase, supabaseConfigured } from "../lib/supabase";
 import { baliDate, longDate } from "../bookings/lib";
-import { canOpen } from "../bookings/sections";
+import { canOpen, GUIDE_ROLE } from "../bookings/sections";
 import ThemeToggle from "../bookings/ThemeToggle";
 import AppMenu from "../bookings/AppMenu";
 
@@ -57,6 +57,8 @@ export default function GuidesPage() {
   const [busy, setBusy] = useState(false);
 
   const canEdit = auth.profile ? canOpen(auth.profile, "guides_edit") : false;
+  // A guide account only gets its own row and its own bookings (the database filters them; the day check is hidden).
+  const isGuide = auth.profile?.role === GUIDE_ROLE;
   const days = useMemo(() => monthDays(month), [month]);
   const monthName = new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
 
@@ -356,7 +358,30 @@ export default function GuidesPage() {
           <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Your account cannot view bookings, so the booking checks below are hidden.</div>
         )}
 
-        {bookingsOk && (
+        {isGuide && guides.length === 0 && !error && (
+          <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
+            No schedule found for "{auth.profile.name}". The account name must be the same as your name in the guide schedule. Ask the office to check it.
+          </div>
+        )}
+
+        {isGuide && bookingsOk && (
+          <section className="rounded-xl border border-slate-200 bg-white p-4">
+            <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">My bookings in {monthName}</h2>
+            {live.length === 0 ? (
+              <p className="text-sm text-slate-500">No booking is set for you this month.</p>
+            ) : (
+              <ul className="space-y-1 text-sm text-slate-800">
+                {live.map((b) => (
+                  <li key={b.id}>
+                    <span className="font-semibold">{longDate(b.activity_date)}</span> · {b.guest_names[0] || "-"} · {b.pax} pax · {b.package}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
+
+        {!isGuide && bookingsOk && (
           <div className="grid gap-4 lg:grid-cols-2">
             <section className="rounded-xl border border-slate-200 bg-white p-4">
               <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">Check a day</h2>

@@ -17,10 +17,12 @@ const ROLES = [
   "Admin Manager",
   "Booking Staff",
 ];
-const RESTRICTED = ["Freelance Sales", "Partner Agency / B2B Reseller", "Booking Staff"];
+const RESTRICTED = ["Freelance Sales", "Partner Agency / B2B Reseller", "Booking Staff", "Tour Guide / Field Lead"];
 // Permissions a restricted role can never have (money and, for Booking Staff, quotes and the simulator).
 const BLOCKED = {
   "Booking Staff": ["quotes", "dashboard", "accounting", "simulator", "guides_edit"],
+  // A guide account sees only the bookings that name it and its own row of the guide schedule.
+  "Tour Guide / Field Lead": ["booking_add", "booking_edit", "quotes", "lists", "guides_edit", "dashboard", "accounting", "simulator"],
   "Freelance Sales": ["dashboard", "accounting", "guides_edit"],
   "Partner Agency / B2B Reseller": ["dashboard", "accounting", "guides_edit"],
 };
