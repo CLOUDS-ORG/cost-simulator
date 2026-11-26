@@ -152,7 +152,6 @@ export default function AccountsPage() {
         <div className="space-y-3">
           {people.map((p) => {
             const opens = sectionsFor(p).map((s) => s.title);
-            if (p.role === "GOD") opens.push("Accounts & permissions");
             const isEditing = editing === p.id && draft;
             const restricted = isEditing && RESTRICTED.includes(draft.role);
             return (
