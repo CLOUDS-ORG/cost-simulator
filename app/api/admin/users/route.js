@@ -17,8 +17,15 @@ const EDITABLE_ROLES = [
   BOOKING_ROLE,
 ];
 
-// Pages of the bookings app that can be switched on or off per account (null = the role's default).
-const SECTION_KEYS = ["accounting", "dashboard"];
+// Permissions of the bookings app that can be switched on or off per account (null = the role's defaults).
+// Keep in step with PERMISSIONS in app/bookings/sections.js and has_section() in supabase/booking-permissions.sql.
+const ALL_PERMS = ["bookings", "booking_add", "booking_edit", "quotes", "lists", "dashboard", "accounting", "simulator"];
+function allowedPerms(role) {
+  if (role === BOOKING_ROLE) return ["bookings", "booking_add", "booking_edit", "lists"]; // never money or quotes
+  if (FREELANCE_ROLES.includes(role)) return ALL_PERMS.filter((k) => k !== "dashboard" && k !== "accounting");
+  return ALL_PERMS;
+}
+const cleanAccess = (role, list) => (Array.isArray(list) ? allowedPerms(role).filter((k) => list.includes(k)) : null);
 
 function adminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -133,6 +140,7 @@ export async function POST(request) {
     can_edit_presets: isFreelance ? false : !!body.canEditPresets,
     can_see_all_dashboard_quotes: isFreelance ? false : !!body.canSeeAllDashboardQuotes,
     can_access_dashboard: role === BOOKING_ROLE ? false : body.canAccessDashboard !== false,
+    section_access: cleanAccess(role, body.sectionAccess),
   };
 
   const { data: profile, error: profileErr } = await admin.from("profiles").insert(row).select().single();
@@ -177,7 +185,7 @@ export async function PATCH(request) {
       return json({ error: "Min profit margin must be between 0 and 100." }, 400);
     }
 
-    const { data: target } = await admin.from("profiles").select("id, role").eq("id", id).maybeSingle();
+    const { data: target } = await admin.from("profiles").select("id, role, section_access").eq("id", id).maybeSingle();
     if (!target) return json({ error: "Account not found." }, 404);
     if (target.role === "GOD") return json({ error: "The master admin's rules cannot be changed." }, 400);
 
@@ -193,14 +201,8 @@ export async function PATCH(request) {
       can_see_all_dashboard_quotes: isFreelance ? false : !!rules.canSeeAllDashboardQuotes,
       can_access_dashboard: role === BOOKING_ROLE ? false : rules.canAccessDashboard !== false,
     };
-    // Only touched when the caller sends it (the Accounts page does, the old editor does not).
-    // An explicit list overrides the role default; restricted roles never get these pages.
-    if ("sectionAccess" in rules || isFreelance) {
-      update.section_access =
-        isFreelance || !Array.isArray(rules.sectionAccess)
-          ? null
-          : SECTION_KEYS.filter((k) => rules.sectionAccess.includes(k));
-    }
+    // The Accounts page sends the list; the old editor does not, so the saved list is kept (and trimmed to what the role may have).
+    update.section_access = cleanAccess(role, "sectionAccess" in rules ? rules.sectionAccess : target.section_access);
     const { data: updated, error: updateErr } = await admin
       .from("profiles")
       .update(update)

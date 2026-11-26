@@ -16,6 +16,7 @@ import {
 } from "./lib";
 import ThemeToggle from "./ThemeToggle";
 import AppMenu from "./AppMenu";
+import { canOpen } from "./sections";
 
 const idr = (n) => "Rp" + Math.round(n || 0).toLocaleString("id-ID");
 
@@ -42,7 +43,12 @@ export default function BookingsPage() {
   const [optionRows, setOptionRows] = useState([]);
   const [optionsError, setOptionsError] = useState("");
 
-  const viewOnlyRole = auth.profile?.role === "Booking Staff"; // may view and edit bookings, nothing else
+  // What this account may do (see Accounts & permissions); the database enforces the same rules.
+  const canViewB = canOpen(auth.profile, "bookings");
+  const canAdd = canOpen(auth.profile, "booking_add");
+  const canEditB = canOpen(auth.profile, "booking_edit");
+  const canQuotes = canOpen(auth.profile, "quotes");
+  const canManageLists = canOpen(auth.profile, "lists");
   const today = baliDate(0);
   const tomorrow = baliDate(1);
 
@@ -87,8 +93,8 @@ export default function BookingsPage() {
       if (!p || p.status !== "Approved") return setAuth({ state: "loggedout", profile: null });
       setAuth({ state: "ok", profile: p });
       const want = new URLSearchParams(window.location.search).get("tab");
-      if (want === "quotes" && p.role !== "Booking Staff") setTab("quotes");
-      if (want === "lists" && (p.role === "GOD" || p.can_edit_catalog === true)) setTab("lists");
+      if (want === "quotes" && canOpen(p, "quotes")) setTab("quotes");
+      if (want === "lists" && canOpen(p, "lists")) setTab("lists");
       load();
       loadOptions();
     })();
@@ -159,7 +165,6 @@ export default function BookingsPage() {
     }
     return out;
   }, [optionRows]);
-  const canManageLists = auth.profile?.role === "GOD" || auth.profile?.can_edit_catalog === true;
 
   const suggestions = useMemo(() => {
     const uniq = (key) => [...new Set(bookings.map((b) => b[key]).filter(Boolean))].sort();
@@ -199,6 +204,16 @@ export default function BookingsPage() {
       </Shell>
     );
 
+  if (!canViewB)
+    return (
+      <Shell>
+        <div className="p-6">
+          <p className="mb-3 text-slate-700">Your account cannot view bookings. Ask the master admin if you need access.</p>
+          <Link href="/portal" className="rounded-lg bg-teal-700 px-4 py-2 font-semibold text-white">Back to home</Link>
+        </div>
+      </Shell>
+    );
+
   const tomorrowIds = bookings.filter((b) => b.activity_date === tomorrow && b.status !== "Cancelled").map((b) => b.id);
 
   return (
@@ -210,7 +225,7 @@ export default function BookingsPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <ThemeToggle />
-          {!viewOnlyRole && (
+          {canAdd && (
             <button
               onClick={() => setEditing(emptyBooking())}
               className="rounded-lg bg-teal-700 px-3 py-2 text-sm font-semibold text-white"
@@ -233,10 +248,7 @@ export default function BookingsPage() {
         )}
 
         <div className="mb-4 flex gap-2">
-          {(viewOnlyRole
-            ? [["bookings", "Bookings"]]
-            : [["bookings", "Bookings"], ["quotes", "Quotes"], ...(canManageLists ? [["lists", "Vendor lists"]] : [])]
-          ).map(([k, label]) => (
+          {[["bookings", "Bookings"], ...(canQuotes ? [["quotes", "Quotes"]] : []), ...(canManageLists ? [["lists", "Vendor lists"]] : [])].map(([k, label]) => (
             <button
               key={k}
               onClick={() => setTab(k)}
@@ -288,7 +300,7 @@ export default function BookingsPage() {
                 return (
                   <React.Fragment key={b.id}>
                     {heading && range === "all" && <h2 className="mt-3 text-sm font-bold uppercase tracking-wide text-slate-500">{heading}</h2>}
-                    <BookingCard b={b} today={today} tomorrow={tomorrow} onEdit={() => setEditing(b)} />
+                    <BookingCard b={b} today={today} tomorrow={tomorrow} onEdit={canEditB ? () => setEditing(b) : null} />
                   </React.Fragment>
                 );
               })}
@@ -300,7 +312,7 @@ export default function BookingsPage() {
           <ListsManager rows={optionRows} error={optionsError} onChanged={loadOptions} />
         )}
 
-        {tab === "quotes" && (
+        {tab === "quotes" && canQuotes && (
           <>
             <div className="mb-3 flex flex-wrap gap-2">
               {[["open", "To follow up / book"], ["Draft", "Draft"], ["Sent", "Sent"], ["Confirmed", "Confirmed"], ["all", "All"]].map(([k, label]) => (
@@ -333,7 +345,7 @@ export default function BookingsPage() {
                     </div>
                     <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                       <p className="text-sm text-slate-700">Price {idr(q.calculatedPrice)}</p>
-                      {q.status === "Confirmed" && !booked && (
+                      {q.status === "Confirmed" && !booked && canAdd && (
                         <button onClick={() => setEditing(bookingFromQuote(q))} className="rounded-lg bg-teal-700 px-3 py-2 text-sm font-semibold text-white">
                           Create booking
                         </button>
@@ -403,7 +415,7 @@ function BookingCard({ b, today, tomorrow, onEdit }) {
           <p className="text-sm text-slate-600">{b.agent || "No agent"} · {b.pax} pax · {b.nationality || "nationality ?"}</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={onEdit} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">Edit</button>
+          {onEdit && <button onClick={onEdit} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">Edit</button>}
           <a href={`/bookings/passenger-list?id=${b.id}`} target="_blank" className="rounded-lg bg-teal-700 px-3 py-2 text-sm font-semibold text-white">
             Passenger list
           </a>

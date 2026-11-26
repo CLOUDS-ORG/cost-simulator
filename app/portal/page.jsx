@@ -54,6 +54,7 @@ export default function PortalPage() {
       <div className="mx-auto w-full max-w-4xl p-4 sm:p-8">
         <h2 className="mb-1 text-2xl font-bold text-slate-900">Welcome{firstName ? `, ${firstName}` : ""}</h2>
         <p className="mb-6 text-slate-600">What would you like to open?</p>
+        {items.length === 0 && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">No page is open for your account yet. Ask the master admin to set your permissions.</p>}
         <div className="grid gap-4 sm:grid-cols-2">
           {items.map(({ key, href, title, desc, Icon }) => (
             <a key={key} href={href} className="flex gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm hover:border-teal-600">
