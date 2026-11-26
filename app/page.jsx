@@ -659,11 +659,11 @@ export default function App() {
     return currentUser;
   }, [currentUser, impersonatedUserId, usersList]);
 
-  // Booking Staff never use the cost simulator: send them straight to the bookings page.
-  // Accounts whose permission list (Accounts & permissions page) leaves out the Cost simulator go to the home page.
+  // Booking Staff and Guide accounts never use the cost simulator: send them to the home page.
+  // Accounts whose permission list (Accounts & permissions page) leaves out the Cost simulator go there too.
   useEffect(() => {
     if (!currentUser || typeof window === "undefined") return;
-    if (currentUser.role === "Booking Staff") window.location.replace("/bookings");
+    if (currentUser.role === "Booking Staff" || currentUser.role === "Tour Guide / Field Lead") window.location.replace("/portal");
     else if (currentUser.role !== "GOD" && Array.isArray(currentUser.sectionAccess) && !currentUser.sectionAccess.includes("simulator"))
       window.location.replace("/portal");
   }, [currentUser]);
@@ -1130,6 +1130,8 @@ export default function App() {
       await loadSharedData(user);
       setAuthForm({ username: "", password: "" });
       setCurrentPage("simulator");
+      // Everyone lands on the home page after logging in and picks what to open from there.
+      window.location.replace("/portal");
       supabase.from("activity_logs").insert({
         data: {
           id: `log-${Date.now()}`,
