@@ -16,8 +16,12 @@ create table if not exists public.profiles (
   can_edit_presets boolean not null default false,
   can_see_all_dashboard_quotes boolean not null default false,
   can_access_dashboard boolean not null default true,
+  can_adjust_margin boolean not null default false,
   created_at timestamptz not null default now()
 );
+
+-- Existing databases: add the profit-slider permission (safe to run more than once).
+alter table public.profiles add column if not exists can_adjust_margin boolean not null default false;
 
 create table if not exists public.app_state (
   key text primary key,            -- 'catalog' | 'presets' | 'ai_prompt' | 'quote_templates'
