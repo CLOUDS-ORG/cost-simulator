@@ -433,6 +433,7 @@ const profileToUser = (p) => ({
   canEditCatalog: p.can_edit_catalog,
   canOverrideCosts: p.can_override_costs,
   canEditPresets: p.can_edit_presets,
+  canAdjustMargin: !!p.can_adjust_margin,
   canSeeAllDashboardQuotes: p.can_see_all_dashboard_quotes,
   canAccessDashboard: p.can_access_dashboard,
   createdAt: (p.created_at || "").slice(0, 10),
@@ -666,6 +667,7 @@ export default function App() {
   const canSeeCosts = isGodUser || (effectiveUser?.canSeeVendorCosts !== false && !isFreelanceSales);
   const canEditCat = isGodUser || (!isFreelanceSales && !!effectiveUser?.canEditCatalog);
   const canEditPresets = isGodUser || (!isFreelanceSales && !!effectiveUser?.canEditPresets);
+  const canAdjustMargin = isGodUser || (!isFreelanceSales && !!effectiveUser?.canAdjustMargin);
   const canSeeAllQuotes = isGodUser || (!isFreelanceSales && !!effectiveUser?.canSeeAllDashboardQuotes);
   const canAccessDashboard = isGodUser || effectiveUser?.canAccessDashboard !== false;
 
@@ -686,6 +688,7 @@ export default function App() {
     canEditCatalog: false,
     canOverrideCosts: false,
     canEditPresets: false,
+    canAdjustMargin: false,
     canSeeAllDashboardQuotes: false,
     canAccessDashboard: true,
   });
@@ -974,6 +977,7 @@ export default function App() {
 
   const margin = currentQuote?.margin || 25;
   const setMargin = (val) => {
+    if (!canAdjustMargin) return;
     const requested = typeof val === "function" ? val(currentQuote.margin) : val;
     const finalMargin = isGodUser ? requested : Math.max(requested, userMinMargin);
     updateCurrentQuote({ margin: finalMargin });
@@ -1164,6 +1168,7 @@ export default function App() {
         canEditCatalog: false,
         canOverrideCosts: false,
         canEditPresets: false,
+        canAdjustMargin: false,
         canSeeAllDashboardQuotes: false,
         canAccessDashboard: true,
       });
@@ -1194,6 +1199,7 @@ export default function App() {
       canEditCatalog: !!user.canEditCatalog,
       canOverrideCosts: !!user.canOverrideCosts,
       canEditPresets: !!user.canEditPresets,
+      canAdjustMargin: !!user.canAdjustMargin,
       canSeeAllDashboardQuotes: !!user.canSeeAllDashboardQuotes,
       canAccessDashboard: user.canAccessDashboard !== false,
     });
@@ -2801,14 +2807,20 @@ Write an enticing, structured, high-converting WhatsApp proposal using appropria
                       Manual price is active, so the slider is ignored. Effective margin: {totals.effectiveMargin.toFixed(1)}%
                     </div>
                   )}
-                  <input
-                    type="range"
-                    min={isGodUser ? 0 : userMinMargin}
-                    max={100}
-                    value={margin}
-                    onChange={(e) => setMargin(Number(e.target.value))}
-                    style={{ width: "100%", display: "block" }}
-                  />
+                  {canAdjustMargin ? (
+                    <input
+                      type="range"
+                      min={isGodUser ? 0 : userMinMargin}
+                      max={100}
+                      value={margin}
+                      onChange={(e) => setMargin(Number(e.target.value))}
+                      style={{ width: "100%", display: "block" }}
+                    />
+                  ) : (
+                    <div style={{ fontSize: 11.5, color: THEME.textMuted, fontWeight: 600 }}>
+                      Margin is fixed for your account. Ask the admin if you need to adjust it.
+                    </div>
+                  )}
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700, color: THEME.textMain, marginTop: 8 }}>
                     <span>Vendor Cost: {idr(totals.cost)}</span>
                     <span style={{ color: COLORS.profit }}>Est. Profit: {idr(totals.profit)}</span>
@@ -4008,6 +4020,15 @@ Write an enticing, structured, high-converting WhatsApp proposal using appropria
                   <label style={{ fontSize: 11.5, fontWeight: 600, color: THEME.textMain, display: "flex", alignItems: "center", gap: 6 }}>
                     <input
                       type="checkbox"
+                      checked={newUserForm.canAdjustMargin}
+                      onChange={(e) => setNewUserForm({ ...newUserForm, canAdjustMargin: e.target.checked })}
+                    />
+                    Can Adjust Profit Margin Slider
+                  </label>
+
+                  <label style={{ fontSize: 11.5, fontWeight: 600, color: THEME.textMain, display: "flex", alignItems: "center", gap: 6 }}>
+                    <input
+                      type="checkbox"
                       checked={newUserForm.canSeeAllDashboardQuotes}
                       onChange={(e) => setNewUserForm({ ...newUserForm, canSeeAllDashboardQuotes: e.target.checked })}
                     />
@@ -4186,6 +4207,15 @@ Write an enticing, structured, high-converting WhatsApp proposal using appropria
                     onChange={(e) => setEditDraft({ ...editDraft, canEditPresets: e.target.checked })}
                   />
                   Can Edit Package Presets
+                </label>
+
+                <label style={{ fontSize: 12, fontWeight: 600, color: THEME.textMain, display: "flex", alignItems: "center", gap: 6 }}>
+                  <input
+                    type="checkbox"
+                    checked={!!editDraft.canAdjustMargin}
+                    onChange={(e) => setEditDraft({ ...editDraft, canAdjustMargin: e.target.checked })}
+                  />
+                  Can Adjust Profit Margin Slider
                 </label>
 
                 <label style={{ fontSize: 12, fontWeight: 600, color: THEME.textMain, display: "flex", alignItems: "center", gap: 6 }}>

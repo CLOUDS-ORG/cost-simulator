@@ -58,6 +58,7 @@ function toClient(p) {
     canEditCatalog: p.can_edit_catalog,
     canOverrideCosts: p.can_override_costs,
     canEditPresets: p.can_edit_presets,
+    canAdjustMargin: !!p.can_adjust_margin,
     canSeeAllDashboardQuotes: p.can_see_all_dashboard_quotes,
     canAccessDashboard: p.can_access_dashboard,
     createdAt: (p.created_at || "").slice(0, 10),
@@ -123,6 +124,7 @@ export async function POST(request) {
     can_edit_catalog: isFreelance ? false : !!body.canEditCatalog,
     can_override_costs: isFreelance ? false : !!body.canOverrideCosts,
     can_edit_presets: isFreelance ? false : !!body.canEditPresets,
+    can_adjust_margin: isFreelance ? false : !!body.canAdjustMargin,
     can_see_all_dashboard_quotes: isFreelance ? false : !!body.canSeeAllDashboardQuotes,
     can_access_dashboard: body.canAccessDashboard !== false,
   };
@@ -182,6 +184,7 @@ export async function PATCH(request) {
       can_edit_catalog: isFreelance ? false : !!rules.canEditCatalog,
       can_override_costs: isFreelance ? false : !!rules.canOverrideCosts,
       can_edit_presets: isFreelance ? false : !!rules.canEditPresets,
+      can_adjust_margin: isFreelance ? false : !!rules.canAdjustMargin,
       can_see_all_dashboard_quotes: isFreelance ? false : !!rules.canSeeAllDashboardQuotes,
       can_access_dashboard: rules.canAccessDashboard !== false,
     };
