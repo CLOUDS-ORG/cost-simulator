@@ -2111,6 +2111,26 @@ Write an enticing, structured, high-converting WhatsApp proposal using appropria
               <strong>{effectiveUser.name}</strong> ({effectiveUser.role})
             </div>
 
+            <a
+              href="/bookings"
+              title="Bookings and passenger lists"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+                background: COLORS.oceanLight,
+                color: "#F4EEDD",
+                border: "1px solid #A3C2BD",
+                borderRadius: 10,
+                padding: "8px 12px",
+                fontSize: 12,
+                fontWeight: 700,
+                textDecoration: "none",
+              }}
+            >
+              <CalendarDays size={14} /> Bookings
+            </a>
+
             <button
               onClick={handleLogout}
               title="Sign Out"
