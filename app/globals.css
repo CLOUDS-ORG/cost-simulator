@@ -59,6 +59,7 @@ html.abs-dark body { background: #0b1220; color: #f1f5f9; }
 html.abs-dark .text-teal-700,
 html.abs-dark .text-teal-800 { color: #5eead4; }
 html.abs-dark .text-white { color: #ffffff; }
+html.abs-dark .bg-teal-100 { background-color: #12403d; }
 html.abs-light body { background: #f8fafc; color: #0f172a; }
 /* Passenger list: the sheets stay white like paper; only the grey area around them and the toolbar change. */
 html.abs-dark .pl-root { background: #0b1220; }
