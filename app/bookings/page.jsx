@@ -363,6 +363,32 @@ function Shell({ children }) {
   return <div className="min-h-screen bg-slate-50">{children}</div>;
 }
 
+// Guest names as a tidy list: groups of up to 4 show in full, bigger groups show the first 3 and a "+N more" toggle.
+function GuestNames({ names }) {
+  const [open, setOpen] = useState(false);
+  const list = names.filter(Boolean);
+  if (list.length === 0) return <p className="text-base font-semibold text-slate-900">No guest name yet</p>;
+  const collapsible = list.length > 4;
+  const shown = collapsible && !open ? list.slice(0, 3) : list;
+  return (
+    <div>
+      <ol className={`text-base font-semibold text-slate-900 ${open && list.length > 8 ? "sm:columns-2 sm:gap-x-8" : ""}`}>
+        {shown.map((n, i) => (
+          <li key={i} className="flex gap-2 break-inside-avoid leading-snug">
+            <span className="w-5 shrink-0 text-right text-sm font-normal text-slate-400">{i + 1}.</span>
+            <span>{n}</span>
+          </li>
+        ))}
+      </ol>
+      {collapsible && (
+        <button type="button" onClick={() => setOpen(!open)} className="mt-1 text-sm font-semibold text-teal-700">
+          {open ? "Show fewer" : `+ ${list.length - 3} more guests`}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function BookingCard({ b, today, tomorrow, onEdit }) {
   const miss = b.status === "Cancelled" ? [] : missingFields(b);
   const edge =
@@ -377,7 +403,7 @@ function BookingCard({ b, today, tomorrow, onEdit }) {
             {b.activity_date === tomorrow && <span className="ml-2 rounded bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">Tomorrow</span>}
             {b.status !== "Confirmed" && <span className="ml-2 rounded bg-slate-200 px-2 py-0.5 text-xs text-slate-700">{b.status}</span>}
           </p>
-          <p className="text-base font-semibold text-slate-900">{b.guest_names.join(", ") || "No guest name yet"}</p>
+          <GuestNames names={b.guest_names} />
           <p className="text-sm text-slate-600">{b.agent || "No agent"} · {b.pax} pax · {b.nationality || "nationality ?"}</p>
         </div>
         <div className="flex gap-2">
