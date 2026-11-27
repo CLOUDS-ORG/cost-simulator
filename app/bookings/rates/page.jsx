@@ -378,7 +378,7 @@ export default function RatesPage() {
 function ExpiryBanner({ list, open }) {
   const expired = list.filter((g) => g.state === "expired").length;
   return (
-    <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-900">
+    <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">
       <p className="flex items-center gap-2 font-bold">
         <AlertTriangle size={16} className="shrink-0" />
         {expired ? `${expired} contract rate${expired === 1 ? " has" : "s have"} expired. ` : ""}
