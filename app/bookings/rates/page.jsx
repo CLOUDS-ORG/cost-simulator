@@ -1,7 +1,7 @@
 "use client";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Folder, FolderOpen, Upload, FileText, Download, ArrowLeft } from "lucide-react";
+import { Folder, FolderOpen, Upload, FileText, Download, ArrowLeft, AlertTriangle } from "lucide-react";
 import { supabase, supabaseConfigured } from "../../lib/supabase";
 import { FORM_OPTIONS, baliDate } from "../lib";
 import ThemeToggle from "../ThemeToggle";
@@ -9,6 +9,7 @@ import AppMenu from "../AppMenu";
 import { canOpen } from "../sections";
 import { idr } from "../costing";
 import { parseCsv, readRateRows, templateCsv, folderKey } from "./importer";
+import { WARN_MONTHS, expiryGroups, expiryByAgent, rowExpiry, describeDays } from "./expiry";
 
 // Contract rates (CR) master data: the nett rate per pax of every agent contract, one folder per agent.
 // The sale price of a booking without an entered price is the rate of the row that fits its agent, package,
@@ -76,14 +77,19 @@ export default function RatesPage() {
   const agents = useMemo(() => [...new Set([...FORM_OPTIONS.agents, ...rows.map((r) => r.agent)])].sort((a, b) => a.localeCompare(b)), [rows]);
   const packages = FORM_OPTIONS.tourPackages;
 
+  // Rates that end within WARN_MONTHS months (or already ended with nothing newer): red mark on the folder and the row.
+  const today = baliDate();
+  const expiry = useMemo(() => expiryByAgent(rows, today), [rows, today]);
+  const expiryList = useMemo(() => expiryGroups(rows, today), [rows, today]);
+
   const folders = useMemo(
     () =>
       agents.map((a) => {
         const mine = rows.filter((r) => r.agent === a);
         const from = mine.reduce((m, r) => (!m || r.valid_from > m ? r.valid_from : m), "");
-        return { agent: a, count: mine.length, latest: from };
+        return { agent: a, count: mine.length, latest: from, alert: expiry[a] || null };
       }),
-    [agents, rows],
+    [agents, rows, expiry],
   );
 
   const scoped = useMemo(() => (view && view !== ALL ? rows.filter((r) => r.agent === view) : rows), [rows, view]);
@@ -207,6 +213,10 @@ export default function RatesPage() {
           </div>
         )}
 
+        {!view && expiryList.length > 0 && (
+          <ExpiryBanner list={expiryList} open={setView} />
+        )}
+
         {!view && (
           <>
             <p className="text-sm text-slate-600">
@@ -225,12 +235,20 @@ export default function RatesPage() {
                   key={f.agent}
                   type="button"
                   onClick={() => setView(f.agent)}
-                  className={`flex items-center gap-3 rounded-xl border bg-white p-4 text-left shadow-sm hover:border-teal-600 ${f.count ? "border-slate-200" : "border-dashed border-slate-300"}`}
+                  className={`flex items-center gap-3 rounded-xl border bg-white p-4 text-left shadow-sm hover:border-teal-600 ${f.alert ? "border-red-400 ring-1 ring-red-300" : f.count ? "border-slate-200" : "border-dashed border-slate-300"}`}
                 >
-                  <Folder size={28} className={f.count ? "shrink-0 text-teal-700" : "shrink-0 text-slate-400"} />
+                  <Folder size={28} className={f.alert ? "shrink-0 text-red-600" : f.count ? "shrink-0 text-teal-700" : "shrink-0 text-slate-400"} />
                   <span className="min-w-0">
                     <span className="block truncate font-bold text-slate-900">{f.agent}</span>
                     <span className="block text-xs text-slate-500">{f.count ? `${f.count} rates · latest from ${f.latest}` : "No rates yet"}</span>
+                    {f.alert && (
+                      <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-bold text-white">
+                        <AlertTriangle size={11} />
+                        {f.alert.state === "expired"
+                          ? `Expired ${f.alert.expired} package${f.alert.expired === 1 ? "" : "s"}`
+                          : `Expires ${describeDays(f.alert.days).replace("ends ", "")}`}
+                      </span>
+                    )}
                   </span>
                 </button>
               ))}
@@ -251,6 +269,11 @@ export default function RatesPage() {
                 <Download size={14} className="mr-1 inline" />Empty template
               </button>
             </div>
+
+            {view && (() => {
+              const mine = agentView ? expiryList.filter((g) => g.agent === view) : expiryList;
+              return mine.length > 0 ? <ExpiryBanner list={mine} open={agentView ? null : setView} /> : null;
+            })()}
 
             {agentView && (
               <UploadPanel
@@ -342,7 +365,7 @@ export default function RatesPage() {
               </div>
             )}
 
-            <RateTable rows={shown} total={scoped.length} agents={agents} packages={packages} overlaps={overlaps} patch={patch} remove={remove} />
+            <RateTable expiryList={expiryList} rows={shown} total={scoped.length} agents={agents} packages={packages} overlaps={overlaps} patch={patch} remove={remove} />
             <p className="text-xs text-slate-500">Today in Bali: {baliDate(0)}. {shown.length} of {scoped.length} rates shown. Changes save when you leave a field.</p>
           </>
         )}
@@ -351,7 +374,34 @@ export default function RatesPage() {
   );
 }
 
-function RateTable({ rows, total, agents, packages, overlaps, patch, remove }) {
+// Red notice listing the rate groups (agent + package) that ended or end within WARN_MONTHS months.
+function ExpiryBanner({ list, open }) {
+  const expired = list.filter((g) => g.state === "expired").length;
+  return (
+    <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-900">
+      <p className="flex items-center gap-2 font-bold">
+        <AlertTriangle size={16} className="shrink-0" />
+        {expired ? `${expired} contract rate${expired === 1 ? " has" : "s have"} expired. ` : ""}
+        {list.length - expired ? `${list.length - expired} more end${list.length - expired === 1 ? "s" : ""} within ${WARN_MONTHS} months. ` : ""}
+        Ask the agent for the new contract and upload it.
+      </p>
+      <ul className="mt-2 space-y-0.5 text-xs">
+        {list.map((g) => (
+          <li key={`${g.agent}-${g.package}`}>
+            {open ? (
+              <button type="button" onClick={() => open(g.agent)} className="font-semibold underline">{g.agent}</button>
+            ) : (
+              <span className="font-semibold">{g.agent}</span>
+            )}
+            {" · "}{g.package}{" · valid to "}{g.end}{" ("}{describeDays(g.days)}{")"}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function RateTable({ rows, total, agents, packages, overlaps, patch, remove, expiryList }) {
   const cellInput = `${inputCls} py-1`;
   return (
     <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
@@ -389,7 +439,12 @@ function RateTable({ rows, total, agents, packages, overlaps, patch, remove }) {
               <td className="w-20 px-2 py-1"><input key={`${r.id}-${r.pax_max}`} inputMode="numeric" className={`${cellInput} text-right`} defaultValue={r.pax_max} onBlur={(e) => e.target.value !== String(r.pax_max) && patch(r, "pax_max", e.target.value)} /></td>
               <td className="w-36 px-2 py-1"><input key={`${r.id}-${r.rate_per_pax}`} inputMode="numeric" className={`${cellInput} text-right font-semibold`} defaultValue={Math.round(Number(r.rate_per_pax))} onBlur={(e) => patch(r, "rate_per_pax", e.target.value)} /></td>
               <td className="w-36 px-2 py-1"><input key={`${r.id}-${r.valid_from}`} type="date" className={cellInput} defaultValue={r.valid_from} onBlur={(e) => e.target.value !== r.valid_from && patch(r, "valid_from", e.target.value)} /></td>
-              <td className="w-36 px-2 py-1"><input key={`${r.id}-${r.valid_to}`} type="date" className={cellInput} defaultValue={r.valid_to || ""} onBlur={(e) => e.target.value !== (r.valid_to || "") && patch(r, "valid_to", e.target.value)} /></td>
+              <td className="w-36 px-2 py-1">
+                <input key={`${r.id}-${r.valid_to}`} type="date" className={`${cellInput} ${rowExpiry(r, expiryList) ? "border-red-500 font-semibold text-red-700" : ""}`} defaultValue={r.valid_to || ""} onBlur={(e) => e.target.value !== (r.valid_to || "") && patch(r, "valid_to", e.target.value)} />
+                {rowExpiry(r, expiryList) && (
+                  <span className="mt-0.5 block text-[11px] font-bold text-red-700">{rowExpiry(r, expiryList) === "expired" ? "Expired" : "Expires soon"}</span>
+                )}
+              </td>
               <td className="px-2 py-1"><input key={`${r.id}-${r.source}`} className={cellInput} defaultValue={r.source} title={r.source} onBlur={(e) => e.target.value !== r.source && patch(r, "source", e.target.value)} /></td>
               <td className="px-2 py-1 text-right">
                 <button type="button" onClick={() => remove(r)} className="text-xs font-semibold text-red-700 hover:underline">Delete</button>
