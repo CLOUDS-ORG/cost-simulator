@@ -44,6 +44,7 @@ export default function RatesPage() {
   const [draft, setDraft] = useState(EMPTY);
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [jump, setJump] = useState(0); // bump to scroll to the upload box after a folder opens
 
   const setView = (v) => {
     setViewState(v);
@@ -119,6 +120,16 @@ export default function RatesPage() {
     }
     return bad;
   }, [rows]);
+
+  const goUpload = (a) => {
+    if (a && a !== view) setView(a);
+    setJump((n) => n + 1);
+  };
+  useEffect(() => {
+    if (!jump) return;
+    const t = setTimeout(() => document.getElementById("upload-rates")?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
+    return () => clearTimeout(t);
+  }, [jump]);
 
   const run = async (promise) => {
     setBusy(true);
@@ -214,7 +225,7 @@ export default function RatesPage() {
         )}
 
         {!view && expiryList.length > 0 && (
-          <ExpiryBanner list={expiryList} open={setView} />
+          <ExpiryBanner list={expiryList} open={setView} upload={goUpload} />
         )}
 
         {!view && (
@@ -272,7 +283,7 @@ export default function RatesPage() {
 
             {view && (() => {
               const mine = agentView ? expiryList.filter((g) => g.agent === view) : expiryList;
-              return mine.length > 0 ? <ExpiryBanner list={mine} open={agentView ? null : setView} /> : null;
+              return mine.length > 0 ? <ExpiryBanner list={mine} open={agentView ? null : setView} upload={goUpload} /> : null;
             })()}
 
             {agentView && (
@@ -375,7 +386,7 @@ export default function RatesPage() {
 }
 
 // Red notice listing the rate groups (agent + package) that ended or end within WARN_MONTHS months.
-function ExpiryBanner({ list, open }) {
+function ExpiryBanner({ list, open, upload }) {
   const expired = list.filter((g) => g.state === "expired").length;
   return (
     <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">
@@ -394,6 +405,9 @@ function ExpiryBanner({ list, open }) {
               <span className="font-semibold">{g.agent}</span>
             )}
             {" · "}{g.package}{" · valid to "}{g.end}{" ("}{describeDays(g.days)}{")"}
+            {upload && (
+              <button type="button" onClick={() => upload(g.agent)} className="ml-2 rounded bg-red-600 px-2 py-0.5 text-[11px] font-bold text-white">Upload new rate</button>
+            )}
           </li>
         ))}
       </ul>
@@ -475,7 +489,7 @@ function UploadPanel({ agent, packages, existing, onDone, onError }) {
       } else if (name.endsWith(".csv") || name.endsWith(".txt")) {
         matrix = parseCsv(await file.text());
       } else {
-        return onError("Upload the rate file as .xlsx (Excel) or .csv. A PDF or Word contract cannot be read automatically: copy its rates into the template.");
+        return onError("Upload the rate file as .xlsx (Excel) or .csv. A PDF or Word contract cannot be read automatically: copy its rates into the template, and keep the contract itself with "Keep the signed contract" in the files box below.");
       }
       setPreview({ file, ...readRateRows(matrix, { agent, packages, existing }) });
     } catch (e) {
@@ -526,7 +540,7 @@ function UploadPanel({ agent, packages, existing, onDone, onError }) {
   };
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-4">
+    <section id="upload-rates" className="scroll-mt-4 rounded-xl border border-slate-200 bg-white p-4">
       <h2 className="mb-1 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-500"><Upload size={16} />Upload a rate file for {agent}</h2>
       <p className="mb-3 text-sm text-slate-600">
         Use the template columns: Agent, Package, From pax, To pax, Rate per pax, Valid from, Valid to, Source, Note (Agent may stay empty). A line with the same package, pax range and Valid from
@@ -617,6 +631,16 @@ function FilesPanel({ agent, onError, refreshKey }) {
     reload();
   };
 
+  const [saving, setSaving] = useState(false);
+  const keep = async (file) => {
+    setSaving(true);
+    const safe = file.name.replace(/[^A-Za-z0-9._-]+/g, "_");
+    const r = await supabase.storage.from(BUCKET).upload(`${dir}/${Date.now()}-${safe}`, file, { upsert: false });
+    setSaving(false);
+    if (r.error) onError(`Could not save the file: ${r.error.message}`);
+    reload();
+  };
+
   if (!files) return null;
   if (files.error) {
     return <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">The file folder is not ready: {files.error}. Run supabase/booking-rate-files.sql once. Importing rates works without it.</p>;
@@ -639,6 +663,17 @@ function FilesPanel({ agent, onError, refreshKey }) {
           ))}
         </ul>
       )}
+      <div className="mt-3 border-t border-slate-100 pt-3">
+        <p className="mb-1 text-xs font-semibold text-slate-600">Keep the signed contract in this folder (PDF, Word, image or Excel). It is only stored, not read into the rates.</p>
+        <input
+          type="file"
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg"
+          disabled={saving}
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) keep(f); e.target.value = ""; }}
+          className="block w-full max-w-md text-sm text-slate-700 file:mr-3 file:rounded-lg file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-slate-700"
+        />
+        {saving && <p className="mt-1 text-xs text-slate-500">Saving…</p>}
+      </div>
     </section>
   );
 }
