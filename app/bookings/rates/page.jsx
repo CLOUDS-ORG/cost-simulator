@@ -467,7 +467,7 @@ function UploadPanel({ agent, packages, existing, onDone, onError }) {
     setBusy(false);
     setPreview(null);
     if (input.current) input.current.value = "";
-    await onDone(`Imported ${agent}: ${fresh.length} new, ${changed.length} updated, ${counts.same} unchanged${counts.error ? `, ${counts.error} lines skipped` : ""}.${fileNote}`);
+    await onDone(`Imported ${agent}: ${fresh.length} new, ${changed.length} updated, ${counts.same} unchanged${counts.error ? `, ${counts.error} ${counts.error === 1 ? "line" : "lines"} skipped` : ""}.${fileNote}`);
   };
 
   return (
@@ -526,7 +526,7 @@ function UploadPanel({ agent, packages, existing, onDone, onError }) {
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <button type="button" disabled={busy || counts.new + counts.update === 0} onClick={doImport} className={btnMain}>
-              {busy ? "Importing…" : `Import ${counts.new + counts.update} rates${counts.error ? ` (skip ${counts.error} lines with errors)` : ""}`}
+              {busy ? "Importing…" : `Import ${counts.new + counts.update} rates${counts.error ? ` (skip ${counts.error} ${counts.error === 1 ? "line" : "lines"} with errors)` : ""}`}
             </button>
             <button type="button" disabled={busy} onClick={() => { setPreview(null); if (input.current) input.current.value = ""; }} className={btnLight}>Cancel</button>
             {counts.new + counts.update === 0 && <span className="text-sm text-slate-500">Nothing to import from this file.</span>}
