@@ -489,7 +489,7 @@ function UploadPanel({ agent, packages, existing, onDone, onError }) {
       } else if (name.endsWith(".csv") || name.endsWith(".txt")) {
         matrix = parseCsv(await file.text());
       } else {
-        return onError("Upload the rate file as .xlsx (Excel) or .csv. A PDF or Word contract cannot be read automatically: copy its rates into the template, and keep the contract itself with "Keep the signed contract" in the files box below.");
+        return onError("Upload the rate file as .xlsx (Excel) or .csv. A PDF or Word contract cannot be read automatically: copy its rates into the template, and keep the contract itself with the Keep the signed contract box below.");
       }
       setPreview({ file, ...readRateRows(matrix, { agent, packages, existing }) });
     } catch (e) {
